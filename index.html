@@ -1409,7 +1409,7 @@
             padding: 80px 5%;
             max-width: 1200px;
             margin: 0 auto;
-            overflow-anchor: none; /* evita micro-saltos de scroll-anchoring al cargar imágenes lazy */
+            overflow-anchor: none;
         }
 
         .gallery-section.visible {
@@ -1418,41 +1418,53 @@
 
         .gallery-scroll {
             display: flex;
-            gap: 20px;
+            gap: 16px;
             overflow-x: auto;
-            padding-bottom: 15px;
-            scroll-snap-type: x proximity; /* evita conflictos con el scroll vertical en móvil */
+            overflow-y: hidden;
+            padding: 8px 4px 18px 4px;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+            overscroll-behavior-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
 
         .gallery-scroll::-webkit-scrollbar {
-            height: 6px;
-        }
-
-        .gallery-scroll::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 3px;
+            display: none;
         }
 
         .gallery-item {
             min-width: 280px;
+            width: 280px;
             height: 350px;
             border-radius: var(--radius);
             overflow: hidden;
             position: relative;
-            scroll-snap-align: start;
+            scroll-snap-align: center;
+            scroll-snap-stop: normal;
             flex-shrink: 0;
             cursor: pointer;
+            transform: translateZ(0);
+            will-change: transform;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
 
         .gallery-item img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.5s;
+            transition: transform 0.4s ease;
+            pointer-events: none;
+            -webkit-user-drag: none;
+            user-select: none;
         }
 
         .gallery-item:hover img {
-            transform: scale(1.08);
+            transform: scale(1.06);
         }
 
         .gallery-item .gallery-caption {
@@ -1461,10 +1473,11 @@
             left: 0;
             right: 0;
             padding: 20px;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
             color: white;
             font-weight: 600;
             font-size: 0.9rem;
+            pointer-events: none;
         }
 
         /* ============================================
@@ -1858,6 +1871,7 @@
 
             .gallery-item {
                 min-width: 240px;
+                width: 240px;
                 height: 280px;
             }
 
@@ -2486,13 +2500,15 @@
                 const caption = img.caption || 'Foto';
                 html += `
                     <div class="gallery-item">
-                        <img src="${escapeHtml(url)}" alt="${escapeHtml(caption)}" loading="lazy">
+                        <img src="${escapeHtml(url)}" alt="${escapeHtml(caption)}" loading="lazy" decoding="async" draggable="false">
                         ${img.caption ? `<div class="gallery-caption">${escapeHtml(img.caption)}</div>` : ''}
                     </div>
                 `;
             });
             container.innerHTML = html;
-            document.getElementById('gallery-section').classList.add('visible');
+            const section = document.getElementById('gallery-section');
+            section.classList.add('visible');
+            section.querySelectorAll('.reveal:not(.active)').forEach(el => scrollObserver.observe(el));
         }
 
         // ============================================================
