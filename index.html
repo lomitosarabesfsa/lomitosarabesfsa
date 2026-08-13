@@ -485,6 +485,7 @@
             z-index: -1;
             transform: scale(1.1);
             filter: brightness(0.7) contrast(1.1);
+            will-change: transform; /* GPU-accelerated parallax sin repaint en scroll */
         }
 
         .hero::after {
@@ -1408,6 +1409,7 @@
             padding: 80px 5%;
             max-width: 1200px;
             margin: 0 auto;
+            overflow-anchor: none; /* evita micro-saltos de scroll-anchoring al cargar imágenes lazy */
         }
 
         .gallery-section.visible {
@@ -1421,6 +1423,7 @@
             padding-bottom: 15px;
             scroll-snap-type: x mandatory;
             -webkit-overflow-scrolling: touch;
+            contain: layout style; /* aísla recalculos de layout al cargar imágenes */
         }
 
         .gallery-scroll::-webkit-scrollbar {
@@ -3408,14 +3411,19 @@
         // Parallax + navbar on scroll (throttle con rAF: 1 actualización por frame,
         // evita trabajo de main-thread en cada evento durante el fling en móvil)
         let scrollRafId = null;
+        const _parallaxBg = document.getElementById('parallax-bg');
+        const _nav = document.getElementById('navbar');
+        const _hero = document.getElementById('inicio');
+        const _heroHeight = _hero ? _hero.offsetHeight : 600;
         const actualizarScrollUI = () => {
             scrollRafId = null;
             const scrolled = window.scrollY;
-            const parallaxBg = document.getElementById('parallax-bg');
-            if (parallaxBg) parallaxBg.style.transform = `translateY(${scrolled * 0.4}px) scale(1.1)`;
+            // Solo mover parallax si el hero aún es visible (evita trabajo inútil en secciones lejanas)
+            if (_parallaxBg && scrolled < _heroHeight) {
+                _parallaxBg.style.transform = `translateY(${scrolled * 0.4}px) scale(1.1)`;
+            }
 
-            const nav = document.getElementById('navbar');
-            if (nav) nav.style.boxShadow = scrolled > 50 ? '0 10px 30px rgba(0,0,0,0.5)' : 'none';
+            if (_nav) _nav.style.boxShadow = scrolled > 50 ? '0 10px 30px rgba(0,0,0,0.5)' : 'none';
         };
         window.addEventListener('scroll', () => {
             if (scrollRafId === null) scrollRafId = requestAnimationFrame(actualizarScrollUI);
