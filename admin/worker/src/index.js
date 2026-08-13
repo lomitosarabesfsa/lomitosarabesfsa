@@ -111,10 +111,18 @@ function authSecret(envLocal) {
 
 async function login(request, envLocal) {
   const body = await request.json().catch(() => ({}));
-  const adminUser = envLocal.ADMIN_USER || 'admin';
-  const adminPass = envLocal.ADMIN_PASS || 'admin123';
-  if (body.usuario === adminUser && body.clave === adminPass) {
-    return json({ ok: true, token: await crearToken(body.usuario, authSecret(envLocal)) });
+  // Normalización de credenciales:
+  //  · Al cargar secrets con `echo`/tuberías puede quedar un salto de línea,
+  //    un \r de Windows o espacios extra dentro del valor almacenado.
+  //  · El usuario también puede tipear espacios sin querer.
+  // Se trima todo y el usuario se compara sin distinguir mayúsculas
+  // (la clave SÍ sigue siendo sensible a mayúsculas).
+  const adminUser = String(envLocal.ADMIN_USER || 'admin').trim().toLowerCase();
+  const adminPass = String(envLocal.ADMIN_PASS || 'admin123').trim();
+  const usuario = String(body.usuario || '').trim().toLowerCase();
+  const clave = String(body.clave || '').trim();
+  if (usuario === adminUser && clave === adminPass) {
+    return json({ ok: true, token: await crearToken(usuario, authSecret(envLocal)) });
   }
   return jsonError('Usuario o clave incorrectos', 401);
 }
