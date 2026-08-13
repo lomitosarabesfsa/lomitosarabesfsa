@@ -1421,9 +1421,10 @@
             gap: 20px;
             overflow-x: auto;
             padding-bottom: 15px;
-            scroll-snap-type: x mandatory;
+            scroll-snap-type: x proximity; /* mandatory suele causar conflictos con el scroll vertical en móvil */
             -webkit-overflow-scrolling: touch;
             contain: layout style; /* aísla recalculos de layout al cargar imágenes */
+            touch-action: pan-y; /* indica al navegador que el gesto vertical pertenece a la página principal */
         }
 
         .gallery-scroll::-webkit-scrollbar {
@@ -2480,19 +2481,20 @@
         function renderGallery() {
             if (!CONFIG.GALLERY || CONFIG.GALLERY.length === 0) return;
             const container = document.getElementById('gallery-scroll');
-            container.innerHTML = '';
+            let html = '';
             CONFIG.GALLERY.forEach(img => {
                 const url = img.url || '';
                 // Solo se renderizan URLs seguras (mismo sitio o https)
                 if (!/^https?:\/\//i.test(url) && !url.startsWith('/')) return;
                 const caption = img.caption || 'Foto';
-                container.innerHTML += `
+                html += `
                     <div class="gallery-item">
                         <img src="${escapeHtml(url)}" alt="${escapeHtml(caption)}" loading="lazy">
                         ${img.caption ? `<div class="gallery-caption">${escapeHtml(img.caption)}</div>` : ''}
                     </div>
                 `;
             });
+            container.innerHTML = html;
             document.getElementById('gallery-section').classList.add('visible');
         }
 
