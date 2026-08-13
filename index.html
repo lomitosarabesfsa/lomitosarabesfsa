@@ -1421,10 +1421,7 @@
             gap: 20px;
             overflow-x: auto;
             padding-bottom: 15px;
-            scroll-snap-type: x proximity; /* mandatory suele causar conflictos con el scroll vertical en móvil */
-            -webkit-overflow-scrolling: touch;
-            contain: layout style; /* aísla recalculos de layout al cargar imágenes */
-            touch-action: pan-y; /* indica al navegador que el gesto vertical pertenece a la página principal */
+            scroll-snap-type: x proximity; /* evita conflictos con el scroll vertical en móvil */
         }
 
         .gallery-scroll::-webkit-scrollbar {
