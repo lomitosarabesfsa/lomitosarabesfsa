@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lomitos-fsa-v14';
+const CACHE_NAME = 'lomitos-fsa-v15';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -31,7 +31,8 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — Network first for CSV/API, Cache first for assets
+// Fetch — Network first para HTML (el cliente siempre recibe la versión nueva
+// al estar en línea), Cache first para assets (carga rápida y offline)
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -43,7 +44,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For everything else: cache first, fallback to network
+  // NAVEGACIONES (HTML): network-first → evita el bug de "cambié el código
+  // pero el celular sigue mostrando la versión vieja" por caché del SW
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
+        // Solo cachear respuestas OK (evita envenenar el caché con 404s)
+        if (networkResponse.ok) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return networkResponse;
+      }).catch(() => caches.match(event.request, { ignoreSearch: true }).then((cached) =>
+        // Fallback offline: resolver ./index.html dentro del scope del SW
+        // (la URL absoluta '/index.html' apuntaría fuera del sitio en GitHub Pages)
+        cached || caches.match(new URL('./index.html', self.registration.scope))
+      ))
+    );
+    return;
+  }
+
+  // Assets: cache first, fallback to network
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
@@ -55,11 +76,6 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       });
-    }).catch(() => {
-      // Offline fallback for navigation
-      if (event.request.mode === 'navigate') {
-        return caches.match('/index.html');
-      }
     })
   );
 });

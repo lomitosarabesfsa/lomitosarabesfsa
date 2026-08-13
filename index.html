@@ -2846,8 +2846,15 @@
                         return;
                     }
                     chip.classList.add('active');
-                    // Scroll instantáneo del chip dentro de la barra (evita encolar scrolls suaves)
-                    chip.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'nearest' });
+                    // Centra el chip dentro de la barra manipulando scrollLeft directamente:
+                    // scrollIntoView puede provocar saltos/bloqueos de scroll de página
+                    // en Android cuando se dispara durante un gesto lento
+                    const chipsScroll = document.querySelector('.carta-chips-scroll');
+                    if (chipsScroll) {
+                        const rect = chipsScroll.getBoundingClientRect();
+                        const chipRect = chip.getBoundingClientRect();
+                        chipsScroll.scrollLeft += (chipRect.left - rect.left) - (rect.width / 2 - chipRect.width / 2);
+                    }
                 });
             // Franja activa en píxeles: justo debajo del nav fijo + chips sticky (~135px)
             }, { rootMargin: '-135px 0px -75% 0px', threshold: 0 });
