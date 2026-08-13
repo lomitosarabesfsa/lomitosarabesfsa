@@ -158,8 +158,17 @@
         }
 
         html {
-            scroll-behavior: smooth;
+            /* Sin scroll-behavior global en táctil: en móvil, el "smooth" global
+               pelea con el gesto rápido y produce scroll trabado. Se restaura solo
+               en dispositivos con puntero fino (desktop), donde las anclas se
+               desplazan suaves sin conflicto con el gesto táctil. */
             scroll-padding-top: 140px;
+        }
+
+        @media (hover: hover) {
+            html {
+                scroll-behavior: smooth;
+            }
         }
 
         ::-webkit-scrollbar {
@@ -184,6 +193,7 @@
             background-color: var(--bg);
             color: var(--text);
             overflow-x: hidden;
+            overflow-x: clip; /* clip NO crea scroll container (evita conflictos sticky/scroll en móvil) */
             transition: background-color 0.4s, color 0.4s;
         }
 
@@ -784,6 +794,12 @@
             display: none;
         }
 
+        /* Evita que el scroll-anchoring de Chrome "ancle" la vista durante la
+           carga/fallo de imágenes y bloquee el scroll rápido en móviles */
+        #carta-container {
+            overflow-anchor: none;
+        }
+
         .carta-chip {
             flex: 0 0 auto;
             display: inline-flex;
@@ -942,6 +958,15 @@
             flex-shrink: 0;
             border: 1px solid rgba(255, 255, 255, 0.05);
             transition: transform 0.3s;
+        }
+
+        /* Si la imagen falla (ej. límite de tasa de R2), NO colapsa el contenedor:
+           mantiene el espacio reservado para no desplazar el layout ni bloquear
+           el scroll (scroll-anchoring) en móviles */
+        .producto-fila-img.img-error {
+            visibility: hidden;
+            background: rgba(255, 255, 255, 0.04);
+            border-style: dashed;
         }
 
         .producto-fila:hover .producto-fila-img {
@@ -2797,6 +2822,7 @@
         // Scroll-spy con IntersectionObserver (sin jank de eventos scroll)
         let cartaObserver = null;
         let cartaScrollListener = null;
+        let cartaSpyRafId = null; // throttle del fallback de scroll (1 vez por frame)
 
         function iniciarScrollSpy() {
             if (cartaObserver) cartaObserver.disconnect();
@@ -2850,7 +2876,15 @@
                         ultimo.classList.add('active');
                     }
                 };
-                window.addEventListener('scroll', cartaScrollListener, { passive: true });
+                // Throttle con rAF: el fallback hace lecturas de layout
+                // (getBoundingClientRect); correrlo en cada evento frena móviles
+                window.addEventListener('scroll', () => {
+                    if (cartaSpyRafId !== null) return;
+                    cartaSpyRafId = requestAnimationFrame(() => {
+                        cartaSpyRafId = null;
+                        cartaScrollListener();
+                    });
+                }, { passive: true });
             }
         }
 
@@ -2868,7 +2902,7 @@
             else if (prod.stock > 5) stockHTML = '<span class="stock-badge disponible">✓ Disponible</span>';
 
             const imgHTML = prod.imagen
-                ? `<img class="producto-fila-img" src="${escapeHtml(prod.imagen)}" alt="${escapeHtml(prod.nombre)}" onerror="this.style.display='none'" loading="lazy">`
+                ? `<img class="producto-fila-img" src="${escapeHtml(prod.imagen)}" alt="${escapeHtml(prod.nombre)}" onerror="this.classList.add('img-error')" loading="lazy">`
                 : '';
 
             const catHTML = mostrarCategoria
@@ -3364,15 +3398,21 @@
             });
         }, { threshold: 0.1 });
 
-        // Parallax + navbar on scroll
-        window.addEventListener('scroll', () => {
+        // Parallax + navbar on scroll (throttle con rAF: 1 actualización por frame,
+        // evita trabajo de main-thread en cada evento durante el fling en móvil)
+        let scrollRafId = null;
+        const actualizarScrollUI = () => {
+            scrollRafId = null;
             const scrolled = window.scrollY;
             const parallaxBg = document.getElementById('parallax-bg');
             if (parallaxBg) parallaxBg.style.transform = `translateY(${scrolled * 0.4}px) scale(1.1)`;
 
             const nav = document.getElementById('navbar');
-            nav.style.boxShadow = scrolled > 50 ? '0 10px 30px rgba(0,0,0,0.5)' : 'none';
-        });
+            if (nav) nav.style.boxShadow = scrolled > 50 ? '0 10px 30px rgba(0,0,0,0.5)' : 'none';
+        };
+        window.addEventListener('scroll', () => {
+            if (scrollRafId === null) scrollRafId = requestAnimationFrame(actualizarScrollUI);
+        }, { passive: true });
 
         // ============================================================
         //  PWA SERVICE WORKER
