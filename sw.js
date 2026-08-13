@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lomitos-fsa-v2';
+const CACHE_NAME = 'lomitos-fsa-v12';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

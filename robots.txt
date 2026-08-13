@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://lomitosarabesfsa.netlify.app/sitemap.xml
+Disallow: /auditoria-seo-lomitos.html
+
+Sitemap: https://lomitosarabesfsa.github.io/lomitosarabesfsa/sitemap.xml

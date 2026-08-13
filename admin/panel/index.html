@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel — Lomitos Árabes FSA</title>
+<style>
+  :root {
+    --primary: #F57C00; --secondary: #D84315; --bg: #121212; --surface: #1E1E1E;
+    --surface2: #2a2a2a; --text: #FFFFFF; --muted: #B0BEC5; --success: #22c55e; --danger: #ef4444;
+    --radius: 16px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  header { background: var(--surface); padding: 16px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,.06); position: sticky; top: 0; z-index: 50; }
+  header h1 { font-size: 1.1rem; color: var(--primary); }
+  header .user { color: var(--muted); font-size: .8rem; }
+  button { cursor: pointer; border: none; border-radius: 10px; font-weight: 600; transition: all .2s; }
+  .btn-primary { background: var(--primary); color: #000; padding: 10px 20px; }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-ghost { background: var(--surface2); color: var(--text); padding: 8px 14px; font-size: .85rem; }
+  .btn-danger { background: rgba(239,68,68,.15); color: var(--danger); padding: 8px 14px; font-size: .85rem; }
+  .btn-mini { background: var(--surface2); color: var(--text); padding: 6px 12px; font-size: .8rem; }
+  .btn-mini.danger { background: rgba(239,68,68,.15); color: var(--danger); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 5% 80px; }
+  /* Login */
+  #login { max-width: 380px; margin: 12vh auto; background: var(--surface); padding: 36px; border-radius: var(--radius); }
+  #login h2 { color: var(--primary); margin-bottom: 20px; text-align: center; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .field label { font-size: .8rem; color: var(--muted); text-transform: uppercase; font-weight: 600; }
+  .field input, .field select, .field textarea { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 12px; color: var(--text); font-size: 1rem; font-family: inherit; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); outline: none; }
+  #login button { width: 100%; }
+  .error-msg { color: var(--danger); font-size: .85rem; margin-bottom: 10px; display: none; }
+  /* Tabs */
+  .tabs { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 24px; padding-bottom: 6px; }
+  .tabs button { background: var(--surface); color: var(--muted); padding: 10px 18px; white-space: nowrap; }
+  .tabs button.active { background: var(--primary); color: #000; }
+  .tab { display: none; }
+  .tab.active { display: block; }
+  /* Cards */
+  .card { background: var(--surface); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 14px; }
+  .card img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; background: var(--surface2); }
+  .card .info { flex: 1; min-width: 0; }
+  .card .info h3 { font-size: 1rem; }
+  .card .info .meta { color: var(--muted); font-size: .8rem; margin-top: 3px; }
+  .card .info .price { color: var(--primary); font-weight: 700; }
+  .card .actions { display: flex; gap: 8px; }
+  .badge-stock { display: inline-block; font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 6px; }
+  .badge-stock.ok { background: rgba(34,197,94,.15); color: var(--success); }
+  .badge-stock.pocas { background: rgba(245,158,11,.15); color: #f59e0b; }
+  .badge-stock.agotado { background: rgba(239,68,68,.15); color: var(--danger); }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .toolbar h2 { font-size: 1.3rem; color: var(--primary); }
+  .empty { color: var(--muted); text-align: center; padding: 40px 0; }
+  /* Modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius); max-width: 560px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; }
+  .modal h3 { color: var(--primary); margin-bottom: 16px; }
+  .modal .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+  #img-preview { width: 80px; height: 80px; object-fit: cover; border-radius: 10px; display: none; margin-top: 8px; background: var(--surface2); }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--success); color: #fff; padding: 12px 22px; border-radius: 12px; font-weight: 600; z-index: 200; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.error { background: var(--danger); }
+  .horario-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; align-items: center; background: var(--surface); padding: 12px; border-radius: 12px; margin-bottom: 8px; }
+  .horario-row input { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 10px; color: var(--text); font-family: inherit; }
+  .horario-row .dia { font-weight: 600; }
+  .cerrado-chk { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--muted); }
+  .galeria-item { position: relative; }
+  .galeria-item img { width: 100px; height: 100px; object-fit: cover; border-radius: 12px; }
+  .galeria-item .rm { position: absolute; top: -8px; right: -8px; background: var(--danger); color: #fff; border-radius: 50%; width: 24px; height: 24px; font-size: .8rem; }
+  @media (max-width: 600px) {
+    .card { flex-wrap: wrap; }
+    .card .actions { width: 100%; }
+    .card .actions button { flex: 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login" style="display:none">
+  <h2>🔐 Panel Admin</h2>
+  <p class="error-msg" id="login-error"></p>
+  <div class="field"><label>Usuario</label><input type="text" id="login-user" autocomplete="username"></div>
+  <div class="field"><label>Clave</label><input type="password" id="login-pass" autocomplete="current-password"></div>
+  <button class="btn-primary" onclick="doLogin()">Ingresar</button>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" style="display:none">
+  <header>
+    <h1>🌯 Lomitos Árabes FSA</h1>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="user" id="user-label"></span>
+      <button class="btn-ghost" onclick="logout()">Salir</button>
+    </div>
+  </header>
+  <main>
+    <div class="tabs" id="tabs">
+      <button class="active" data-tab="productos" onclick="showTab('productos')">🍔 Productos</button>
+      <button data-tab="categorias" onclick="showTab('categorias')">🗂️ Categorías</button>
+      <button data-tab="promos" onclick="showTab('promos')">🔥 Promos</button>
+      <button data-tab="horarios" onclick="showTab('horarios')">🕒 Horarios</button>
+      <button data-tab="galeria" onclick="showTab('galeria')">📸 Galería</button>
+      <button data-tab="config" onclick="showTab('config')">⚙️ Config</button>
+    </div>
+
+    <!-- Productos -->
+    <div class="tab active" id="tab-productos">
+      <div class="toolbar"><h2>Productos</h2><button class="btn-primary" onclick="abrirProducto()">+ Nuevo producto</button></div>
+      <div id="lista-productos"></div>
+    </div>
+
+    <!-- Categorías -->
+    <div class="tab" id="tab-categorias">
+      <div class="toolbar"><h2>Categorías</h2><button class="btn-primary" onclick="abrirCategoria()">+ Nueva</button></div>
+      <div id="lista-categorias"></div>
+    </div>
+
+    <!-- Promos -->
+    <div class="tab" id="tab-promos">
+      <div class="toolbar"><h2>Promos (banner)</h2><button class="btn-primary" onclick="agregarPromo()">+ Agregar promo</button></div>
+      <div id="lista-promos"></div>
+      <div style="margin-top:16px"><button class="btn-primary" onclick="guardarPromos()">💾 Guardar promos</button></div>
+    </div>
+
+    <!-- Horarios -->
+    <div class="tab" id="tab-horarios">
+      <div class="toolbar"><h2>Horarios</h2><button class="btn-primary" onclick="guardarHorarios()">💾 Guardar horarios</button></div>
+      <div id="lista-horarios"></div>
+      <p style="color:var(--muted);font-size:.8rem;margin-top:12px">Dejá el horario vacío si ese día está cerrado.</p>
+    </div>
+
+    <!-- Galería -->
+    <div class="tab" id="tab-galeria">
+      <div class="toolbar"><h2>Galería (Nuestra Cocina)</h2><button class="btn-primary" onclick="document.getElementById('file-galeria').click()">+ Subir foto</button></div>
+      <input type="file" id="file-galeria" accept="image/*" multiple style="display:none" onchange="subirGaleria(this.files)">
+      <div id="lista-galeria"></div>
+      <div style="margin-top:16px"><button class="btn-primary" onclick="guardarGaleria()">💾 Guardar galería</button></div>
+    </div>
+
+    <!-- Config -->
+    <div class="tab" id="tab-config">
+      <div class="toolbar"><h2>Configuración</h2></div>
+      <div class="field"><label>Número de WhatsApp (con código de país, sin +)</label><input type="text" id="config-whatsapp"></div>
+      <button class="btn-primary" onclick="guardarConfig()">💾 Guardar</button>
+    </div>
+  </main>
+</div>
+
+<!-- Modal producto -->
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal-producto">
+    <h3 id="modal-title">Nuevo producto</h3>
+    <div class="field"><label>Nombre *</label><input type="text" id="p-nombre"></div>
+    <div class="field"><label>Categoría</label><select id="p-categoria"></select></div>
+    <div class="field"><label>Descripción</label><textarea id="p-descripcion" rows="2"></textarea></div>
+    <div class="field"><label>Precio ($)</label><input type="number" id="p-precio" step="0.01" min="0"></div>
+    <div class="field"><label>Stock (-1 = sin control)</label><input type="number" id="p-stock" value="-1"></div>
+    <div class="field"><label>Foto del producto</label>
+      <input type="file" id="p-file" accept="image/*" onchange="subirFotoProducto(this.files)">
+      <img id="img-preview" alt="preview">
+      <span style="color:var(--muted);font-size:.8rem" id="p-img-url"></span>
+    </div>
+    <div class="actions">
+      <button class="btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-primary" onclick="guardarProducto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = 'https://lomitos-api.gapersingula97.workers.dev';
+let token = localStorage.getItem('lomitos_admin_token') || '';
+let productos = [], categorias = [], promos = [], horarios = {}, galeria = [], editandoId = null, urlSubida = '';
+
+// ---------- Utilidades ----------
+function $(id) { return document.getElementById(id); }
+function toast(msg, error = false) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (error ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2500);
+}
+async function api(path, method = 'GET', body = null) {
+  const opts = { method, headers: {} };
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+  if (body !== null) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const res = await fetch(API_BASE + path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
+  return data;
+}
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- Login ----------
+function init() {
+  if (token) { mostrarApp(); } else { $('login').style.display = 'block'; }
+}
+async function doLogin() {
+  $('login-error').style.display = 'none';
+  try {
+    const r = await fetch(API_BASE + '/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: $('login-user').value, clave: $('login-pass').value }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Error');
+    token = data.token;
+    localStorage.setItem('lomitos_admin_token', token);
+    mostrarApp();
+  } catch (e) {
+    $('login-error').textContent = e.message;
+    $('login-error').style.display = 'block';
+  }
+}
+function logout() { token = ''; localStorage.removeItem('lomitos_admin_token'); location.reload(); }
+async function mostrarApp() {
+  $('login').style.display = 'none';
+  $('app').style.display = 'block';
+  $('user-label').textContent = 'Admin';
+  await cargarTodo();
+}
+
+// ---------- Tabs ----------
+function showTab(nombre) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === nombre));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + nombre));
+}
+
+// ---------- Cargar datos ----------
+async function cargarTodo() {
+  try {
+    // allSettled: un endpoint que falle no tumba la carga completa
+    const [rP, rC, rPr, rCfg] = await Promise.allSettled([
+      api('/api/admin/productos'), api('/api/admin/categorias'), api('/api/admin/promos'), api('/api/admin/config'),
+    ]);
+    if (rP.status === 'rejected' && (rP.reason.message.includes('401') || rP.reason.message.includes('autorizado'))) {
+      logout();
+      return;
+    }
+    productos = rP.status === 'fulfilled' ? rP.value : [];
+    categorias = rC.status === 'fulfilled' ? rC.value : [];
+    promos = rPr.status === 'fulfilled' ? rPr.value : [];
+    const config = rCfg.status === 'fulfilled' ? rCfg.value : {};
+    horarios = config.horarios || {};
+    galeria = config.galeria || [];
+    $('config-whatsapp').value = config.whatsapp || '';
+    renderProductos(); renderCategorias(); renderPromos(); renderHorarios(); renderGaleria();
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+// ---------- Productos ----------
+function renderProductos() {
+  const cont = $('lista-productos');
+  if (!productos.length) { cont.innerHTML = '<p class="empty">Todavía no hay productos. Creá el primero.</p>'; return; }
+  cont.innerHTML = '';
+  productos.forEach(p => {
+    const cat = categorias.find(c => c.id === p.categoria_id);
+    const stock = p.stock;
+    const badge = stock === -1 ? '' : stock === 0 ? '<span class="badge-stock agotado">AGOTADO</span>' : stock <= 5 ? '<span class="badge-stock pocas">ÚLTIMAS ' + stock + '</span>' : '<span class="badge-stock ok">DISPONIBLE</span>';
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      ${p.imagen ? `<img src="${escapeHtml(p.imagen)}" onerror="this.style.display='none'" alt="">` : '<img src="" style="display:none" alt="">'}
+      <div class="info">
+        <h3>${escapeHtml(p.nombre)} ${badge}</h3>
+        <div class="meta">${escapeHtml(cat ? cat.nombre : 'Sin categoría')}${p.stock !== -1 ? ' · Stock: ' + p.stock : ''}</div>
+        <div class="price">$${Number(p.precio).toLocaleString('es-AR')}</div>
+      </div>
+      <div class="actions">
+        <button class="btn-mini" onclick="abrirProducto(${p.id})">Editar</button>
+        <button class="btn-mini danger" onclick="eliminarProducto(${p.id})">Borrar</button>
+      </div>`;
+    cont.appendChild(div);
+  });
+}
+function abrirProducto(id = null) {
+  editandoId = id; urlSubida = '';
+  $('modal-title').textContent = id ? 'Editar producto' : 'Nuevo producto';
+  $('p-nombre').value = ''; $('p-descripcion').value = ''; $('p-precio').value = ''; $('p-stock').value = -1;
+  $('img-preview').style.display = 'none'; $('p-img-url').textContent = ''; $('p-file').value = '';
+  const catSel = $('p-categoria');
+  catSel.innerHTML = categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('');
+  if (id) {
+    const p = productos.find(x => x.id === id);
+    if (!p) return;
+    $('p-nombre').value = p.nombre;
+    $('p-categoria').value = p.categoria_id;
+    $('p-descripcion').value = p.descripcion;
+    $('p-precio').value = p.precio;
+    $('p-stock').value = p.stock;
+    if (p.imagen) { $('img-preview').src = p.imagen; $('img-preview').style.display = 'block'; $('p-img-url').textContent = p.imagen; urlSubida = p.imagen; }
+  }
+  $('overlay').classList.add('open');
+}
+async function subirFotoProducto(files) {
+  const file = files[0];
+  if (!file) return;
+  const base64 = await fileABase64(file);
+  $('img-preview').src = URL.createObjectURL(file);
+  $('img-preview').style.display = 'block';
+  try {
+    const r = await api('/api/admin/imagen', 'POST', { filename: file.name, data: base64, contentType: file.type });
+    urlSubida = r.url;
+    $('p-img-url').textContent = '✅ Foto subida: ' + r.key;
+  } catch (e) { toast('Error al subir foto: ' + e.message, true); }
+}
+async function guardarProducto() {
+  const body = {
+    categoria_id: parseInt($('p-categoria').value, 10),
+    nombre: $('p-nombre').value.trim(),
+    descripcion: $('p-descripcion').value.trim(),
+    precio: parseFloat($('p-precio').value) || 0,
+    stock: parseInt($('p-stock').value, 10),
+    imagen: urlSubida,
+    activo: 1, orden: 0,
+  };
+  if (!body.nombre) { toast('El nombre es obligatorio', true); return; }
+  try {
+    if (editandoId) await api('/api/admin/productos/' + editandoId, 'PUT', body);
+    else await api('/api/admin/productos', 'POST', body);
+    toast('Producto guardado ✓');
+    cerrarModal(); cargarTodo();
+  } catch (e) { toast(e.message, true); }
+}
+async function eliminarProducto(id) {
+  if (!confirm('¿Eliminar este producto?')) return;
+  try { await api('/api/admin/productos/' + id, 'DELETE'); toast('Producto eliminado'); cargarTodo(); }
+  catch (e) { toast(e.message, true); }
+}
+
+// ---------- Categorías ----------
+function renderCategorias() {
+  const cont = $('lista-categorias');
+  if (!categorias.length) { cont.innerHTML = '<p class="empty">Sin categorías.</p>'; return; }
+  cont.innerHTML = '';
+  categorias.forEach(c => {
+    const n = productos.filter(p => p.categoria_id === c.id).length;
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <div style="font-size:1.6rem">${escapeHtml(c.icono)}</div>
+      <div class="info"><h3>${escapeHtml(c.nombre)}</h3><div class="meta">${n} producto(s)</div></div>
+      <div class="actions"><button class="btn-mini danger" onclick="eliminarCategoria(${c.id})">Borrar</button></div>`;
+    cont.appendChild(div);
+  });
+}
+function abrirCategoria() {
+  const nombre = prompt('Nombre de la nueva categoría:');
+  if (!nombre) return;
+  api('/api/admin/categorias', 'POST', { nombre, icono: '🍽️', orden: 0 })
+    .then(() => { toast('Categoría creada'); cargarTodo(); })
+    .catch(e => toast(e.message, true));
+}
+async function eliminarCategoria(id) {
+  if (!confirm('¿Eliminar esta categoría y TODOS sus productos?')) return;
+  try { await api('/api/admin/categorias/' + id, 'DELETE'); toast('Categoría eliminada'); cargarTodo(); }
+  catch (e) { toast(e.message, true); }
+}
+
+// ---------- Promos ----------
+function renderPromos() {
+  const cont = $('lista-promos');
+  if (!promos.length) { cont.innerHTML = '<p class="empty">Sin promos. Agregá una para mostrar el banner.</p>'; return; }
+  cont.innerHTML = '';
+  promos.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <div class="info" style="display:flex;gap:10px;align-items:center">
+        <input type="checkbox" ${p.activa ? 'checked' : ''} onchange="promos[${i}].activa = this.checked">
+        <input style="width:48px;text-align:center;background:var(--surface2);border:none;border-radius:8px;padding:6px;color:var(--text)" value="${escapeHtml(p.icono)}" oninput="promos[${i}].icono = this.value">
+        <input style="flex:1;background:var(--surface2);border:none;border-radius:8px;padding:8px;color:var(--text)" value="${escapeHtml(p.texto)}" placeholder="Texto de la promo" oninput="promos[${i}].texto = this.value">
+      </div>
+      <div class="actions"><button class="btn-mini danger" onclick="promos.splice(${i},1);renderPromos()">Quitar</button></div>`;
+    cont.appendChild(div);
+  });
+}
+function agregarPromo() { promos.push({ activa: true, icono: '🔥', texto: '', descripcion: '' }); renderPromos(); }
+async function guardarPromos() {
+  try { await api('/api/admin/promos', 'PUT', { promos }); toast('Promos guardadas ✓'); }
+  catch (e) { toast(e.message, true); }
+}
+
+// ---------- Horarios ----------
+function renderHorarios() {
+  const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const cont = $('lista-horarios');
+  cont.innerHTML = '';
+  dias.forEach((nombre, i) => {
+    const h = horarios[i];
+    const cerrado = !h;
+    const div = document.createElement('div');
+    div.className = 'horario-row';
+    div.innerHTML = `
+      <span class="dia">${nombre}</span>
+      <input type="time" value="${h ? h.abre : ''}" data-dia="${i}" data-tipo="abre" ${cerrado ? 'disabled' : ''}>
+      <input type="time" value="${h ? h.cierra : ''}" data-dia="${i}" data-tipo="cierra" ${cerrado ? 'disabled' : ''}>
+      <label class="cerrado-chk"><input type="checkbox" ${cerrado ? 'checked' : ''} onchange="toggleCerrado(${i}, this.checked)"> Cerrado</label>`;
+    cont.appendChild(div);
+  });
+}
+function toggleCerrado(dia, cerrado) {
+  const abre = document.querySelector(`input[data-dia="${dia}"][data-tipo="abre"]`);
+  const cierra = document.querySelector(`input[data-dia="${dia}"][data-tipo="cierra"]`);
+  abre.disabled = cerrado; cierra.disabled = cerrado;
+  if (cerrado) { delete horarios[dia]; } else { horarios[dia] = { abre: abre.value || '20:00', cierra: cierra.value || '00:00' }; }
+}
+function guardarHorarios() {
+  document.querySelectorAll('.horario-row').forEach(row => {
+    const dia = parseInt(row.querySelector('input[data-tipo="abre"]').dataset.dia, 10);
+    const cerrado = row.querySelector('input[type="checkbox"]').checked;
+    if (cerrado) { delete horarios[dia]; return; }
+    horarios[dia] = {
+      abre: row.querySelector('input[data-tipo="abre"]').value || '20:00',
+      cierra: row.querySelector('input[data-tipo="cierra"]').value || '00:00',
+    };
+  });
+  api('/api/admin/config', 'PUT', { horarios })
+    .then(() => toast('Horarios guardados ✓'))
+    .catch(e => toast(e.message, true));
+}
+
+// ---------- Galería ----------
+function renderGaleria() {
+  const cont = $('lista-galeria');
+  if (!galeria.length) { cont.innerHTML = '<p class="empty">Sin fotos. Subí fotos de la cocina.</p>'; return; }
+  cont.innerHTML = '';
+  galeria.forEach((g, i) => {
+    const div = document.createElement('div');
+    div.className = 'galeria-item';
+    div.style.cssText = 'display:inline-block;margin:8px;position:relative';
+    div.innerHTML = `<img src="${escapeHtml(g.url)}" alt=""><button class="rm" onclick="galeria.splice(${i},1);renderGaleria()">✕</button>`;
+    cont.appendChild(div);
+  });
+}
+async function subirGaleria(files) {
+  for (const file of files) {
+    try {
+      const r = await api('/api/admin/imagen', 'POST', { filename: file.name, data: await fileABase64(file), contentType: file.type });
+      galeria.push({ url: r.url, caption: '' });
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+  renderGaleria();
+}
+async function guardarGaleria() {
+  try { await api('/api/admin/config', 'PUT', { galeria }); toast('Galería guardada ✓'); }
+  catch (e) { toast(e.message, true); }
+}
+
+// ---------- Config ----------
+async function guardarConfig() {
+  try {
+    await api('/api/admin/config', 'PUT', { whatsapp: $('config-whatsapp').value.trim() });
+    toast('Configuración guardada ✓');
+  } catch (e) { toast(e.message, true); }
+}
+
+// ---------- Helpers ----------
+function cerrarModal() { $('overlay').classList.remove('open'); }
+function fileABase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+$('overlay').addEventListener('click', (e) => { if (e.target === $('overlay')) cerrarModal(); });
+init();
+</script>
+</body>
+</html>
