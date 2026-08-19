@@ -648,90 +648,6 @@
             font-size: 1.1rem;
         }
 
-        /* ============================================
-           SEARCH BAR
-           ============================================ */
-        .search-container {
-            max-width: 500px;
-            margin: 0 auto 40px;
-            position: relative;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 14px 20px 14px 50px;
-            background: var(--surface);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 50px;
-            color: var(--text);
-            font-size: 1rem;
-            font-family: 'Inter', sans-serif;
-            outline: none;
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-
-        .search-input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
-        }
-
-        .search-input::placeholder {
-            color: var(--text-muted);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 18px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            pointer-events: none;
-        }
-
-        .search-clear {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 1.1rem;
-            display: none;
-            transition: color 0.3s;
-        }
-
-        .search-clear.visible {
-            display: block;
-        }
-
-        .search-clear:hover {
-            color: var(--text);
-        }
-
-        /* Search results overlay */
-        .search-results {
-            display: none;
-            margin-bottom: 30px;
-        }
-
-        .search-results.visible {
-            display: block;
-        }
-
-        .search-results-title {
-            font-size: 1rem;
-            color: var(--text-muted);
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .search-results-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 0;
-        }
 
         /* ============================================
            SKELETON LOADERS
@@ -773,22 +689,65 @@
             position: sticky;
             top: 78px;
             z-index: 900;
-            background: var(--bg);
-            padding: 12px 0;
+            background: linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.9) 100%);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 8px 10px;
             margin: 0 -5% 40px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 2px solid var(--primary);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            transition: background 0.4s;
+            display: flex;
+            align-items: center;
         }
 
         [data-theme="light"] .carta-chips {
-            border-bottom-color: rgba(0, 0, 0, 0.08);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 245, 245, 0.9) 100%);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .nav-arrow {
+            background: var(--surface);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--primary);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-arrow:hover {
+            background: var(--primary);
+            color: #000;
+            transform: scale(1.1);
+        }
+
+        .nav-arrow.hidden {
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+            margin: 0;
+            border: none;
         }
 
         .carta-chips-scroll {
+            flex: 1;
             display: flex;
             gap: 10px;
             overflow-x: auto;
-            padding: 2px 5%;
+            padding: 4px 5px;
             scrollbar-width: none;
+            scroll-snap-type: x mandatory;
+            scroll-padding-left: 5px;
+            scroll-behavior: smooth;
         }
 
         .carta-chips-scroll::-webkit-scrollbar {
@@ -805,23 +764,32 @@
             flex: 0 0 auto;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 7px;
-            padding: 9px 17px;
+            padding: 12px 20px;
+            min-height: 44px; /* A11y */
             border-radius: 50px;
             background: var(--surface);
             border: 1px solid rgba(255, 255, 255, 0.08);
             color: var(--text-muted);
             font-family: 'Inter', sans-serif;
             font-weight: 600;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             cursor: pointer;
             white-space: nowrap;
-            transition: all 0.25s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            scroll-snap-align: start;
         }
 
         .carta-chip:hover {
             color: var(--text);
+            background: var(--surface-hover);
             border-color: rgba(245, 124, 0, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .carta-chip:active {
+            transform: scale(0.95);
         }
 
         .carta-chip.active {
@@ -829,7 +797,8 @@
             color: #000;
             border-color: var(--primary);
             font-weight: 800;
-            box-shadow: 0 4px 14px rgba(245, 124, 0, 0.35);
+            box-shadow: 0 6px 16px rgba(245, 124, 0, 0.4);
+            transform: none;
         }
 
         /* Mejoras táctiles móviles: sin flash de tap, sin zoom por doble tap, sin selección de texto */
@@ -1081,6 +1050,105 @@
         .ui-overlay.open {
             opacity: 1;
             pointer-events: all;
+        }
+
+        /* Product Modal */
+        .product-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .product-modal-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .product-modal {
+            background: var(--surface);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            transform: translateY(20px);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .product-modal-overlay.open .product-modal {
+            transform: translateY(0);
+        }
+
+        .product-modal-img {
+            width: 100%;
+            height: auto;
+            max-height: 350px;
+            object-fit: cover;
+            border-radius: 20px 20px 0 0;
+            display: block;
+        }
+
+        .product-modal-info {
+            padding: 25px;
+        }
+
+        .product-modal-title {
+            font-size: 1.6rem;
+            color: var(--text);
+            margin-bottom: 10px;
+            line-height: 1.2;
+        }
+
+        .product-modal-desc {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .product-modal-price {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--tertiary);
+        }
+
+        .close-modal-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            transition: background 0.3s;
+        }
+
+        .close-modal-btn:hover {
+            background: var(--primary);
+            color: #000;
         }
 
         .cart-header {
@@ -1954,7 +2022,7 @@
 
     <header class="hero" id="inicio">
         <div class="hero-bg" id="parallax-bg"></div>
-        <div class="weight-badge reveal">¡LLEGAN A PESAR CERCA DE 1000 GR!</div>
+        <div class="weight-badge reveal">¡LLEGAN A PESAR 1000GR O MAS!</div>
         <h1 class="reveal stagger-1">LOMITOS ÁRABES EN FORMOSA<br><span>EL AUTÉNTICO SABOR</span></h1>
         <p class="reveal stagger-2">Los mejores lomitos árabes de Formosa. Masa casera, ingredientes frescos y mucho
             sabor.</p>
@@ -1978,31 +2046,17 @@
         <h2 class="section-title reveal">Nuestro <span>Menú</span></h2>
         <p class="section-subtitle reveal">Todo el menú a la vista: tocá el botón <strong>+</strong> para armar tu pedido 👇</p>
 
-        <!-- Search Bar -->
-        <div class="search-container reveal">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"
-                height="20">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input type="text" class="search-input" id="search-input" placeholder="Buscar productos..."
-                oninput="handleSearch(this.value)">
-            <button class="search-clear" id="search-clear" onclick="clearSearch()" aria-label="Limpiar búsqueda">✕</button>
-        </div>
 
-        <!-- Search Results -->
-        <div class="search-results" id="search-results">
-            <p class="search-results-title" id="search-results-title"></p>
-            <div class="search-results-grid" id="search-results-grid"></div>
-        </div>
 
-        <!-- Chips de categorías (skeleton) -->
+        <!-- Chips de categorías -->
         <div class="carta-chips" id="carta-chips">
-            <div class="carta-chips-scroll">
+            <button class="nav-arrow left" id="nav-arrow-left" aria-label="Desplazar a la izquierda" onclick="scrollChips(-1)">❮</button>
+            <div class="carta-chips-scroll" id="carta-chips-scroll">
                 <div class="skeleton" style="width: 110px; height: 38px; border-radius: 50px; flex-shrink: 0;"></div>
                 <div class="skeleton" style="width: 150px; height: 38px; border-radius: 50px; flex-shrink: 0;"></div>
                 <div class="skeleton" style="width: 100px; height: 38px; border-radius: 50px; flex-shrink: 0;"></div>
             </div>
+            <button class="nav-arrow right" id="nav-arrow-right" aria-label="Desplazar a la derecha" onclick="scrollChips(1)">❯</button>
         </div>
 
         <!-- Carta completa: secciones por categoría, renderizada por JS -->
@@ -2130,6 +2184,19 @@
 
     <!-- Modales UI -->
     <div class="ui-overlay" id="ui-overlay" onclick="cerrarTodo()"></div>
+
+    <!-- Modal de Producto -->
+    <div class="product-modal-overlay" id="product-modal-overlay" onclick="if(event.target===this) cerrarModalProducto()">
+        <div class="product-modal">
+            <button class="close-modal-btn" onclick="cerrarModalProducto()" aria-label="Cerrar detalles">✕</button>
+            <img class="product-modal-img" id="product-modal-img" src="" alt="">
+            <div class="product-modal-info">
+                <h3 class="product-modal-title" id="product-modal-title"></h3>
+                <p class="product-modal-desc" id="product-modal-desc"></p>
+                <p class="product-modal-price" id="product-modal-price"></p>
+            </div>
+        </div>
+    </div>
 
     <!-- Cart Sidebar -->
     <div class="cart-sidebar" id="cart-sidebar" role="dialog" aria-modal="true" aria-labelledby="cart-title">
@@ -2309,7 +2376,7 @@
         let categorias = new Map(); // Map<nombre, {icono, count}>
         let carrito = [];
         let metodoEntrega = "Envío a domicilio";
-        let searchTimeout = null;
+
 
         // ============================================================
         //  SEGURIDAD: ESCAPE DE HTML
@@ -2741,7 +2808,7 @@
             chipTodos.className = 'carta-chip active';
             chipTodos.dataset.todos = '';
             chipTodos.setAttribute('aria-label', 'Ver todas las categorías');
-            chipTodos.innerHTML = `<span aria-hidden="true">🍽️</span> Todos`;
+            chipTodos.innerHTML = `Todos`;
             chipTodos.addEventListener('click', () => verTodos(chipTodos));
             chipsScroll.appendChild(chipTodos);
 
@@ -2758,7 +2825,7 @@
                 chip.className = 'carta-chip';
                 chip.dataset.target = id;
                 chip.setAttribute('aria-label', `Ver categoría ${cat}`);
-                chip.innerHTML = `<span aria-hidden="true">${escapeHtml(data.icono)}</span> ${escapeHtml(cat)}`;
+                chip.innerHTML = `${escapeHtml(cat)}`;
                 chip.addEventListener('click', () => irACategoria(id, cat, chip));
                 chipsScroll.appendChild(chip);
 
@@ -2924,8 +2991,16 @@
             else if (prod.stock > 0 && prod.stock <= 5) stockHTML = `<span class="stock-badge pocas">🔥 Últimas ${prod.stock}</span>`;
             else if (prod.stock > 5) stockHTML = '<span class="stock-badge disponible">✓ Disponible</span>';
 
+            const prodString = encodeURIComponent(JSON.stringify(prod));
+            
+            // Image with a magnifying glass hint
             const imgHTML = prod.imagen
-                ? `<img class="producto-fila-img" src="${escapeHtml(prod.imagen)}" alt="${escapeHtml(prod.nombre)}" onerror="this.classList.add('img-error')" loading="lazy">`
+                ? `<div class="producto-fila-img-wrapper" onclick="abrirModalProducto('${prodString}')" style="position: relative; cursor: pointer; flex-shrink: 0;" aria-label="Ver detalles de ${escapeHtml(prod.nombre)}">
+                       <img class="producto-fila-img" src="${escapeHtml(prod.imagen)}" alt="${escapeHtml(prod.nombre)}" onerror="this.classList.add('img-error')" loading="lazy">
+                       <div class="img-zoom-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.6); color: white; border-radius: 50%; padding: 4px; display: flex; backdrop-filter: blur(2px);">
+                           <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                       </div>
+                   </div>`
                 : '';
 
             const catHTML = mostrarCategoria
@@ -2934,7 +3009,7 @@
 
             fila.innerHTML = `
                 ${imgHTML}
-                <div class="producto-fila-info">
+                <div class="producto-fila-info" onclick="abrirModalProducto('${prodString}')" style="cursor: pointer;" aria-label="Ver detalles de ${escapeHtml(prod.nombre)}">
                     <div class="producto-fila-titulo">
                         <h4>${escapeHtml(prod.nombre)}</h4>
                         ${catHTML}
@@ -2948,55 +3023,7 @@
             return fila;
         }
 
-        // ============================================================
-        //  BÚSQUEDA
-        // ============================================================
-        function handleSearch(query) {
-            clearTimeout(searchTimeout);
-            const clearBtn = document.getElementById('search-clear');
-            clearBtn.classList.toggle('visible', query.length > 0);
 
-            searchTimeout = setTimeout(() => {
-                const resultsContainer = document.getElementById('search-results');
-                const resultsGrid = document.getElementById('search-results-grid');
-                const resultsTitle = document.getElementById('search-results-title');
-                const cartaContainer = document.getElementById('carta-container');
-
-                if (!query.trim()) {
-                    resultsContainer.classList.remove('visible');
-                    cartaContainer.style.display = '';
-                    const chipsBar = document.getElementById('carta-chips');
-                    if (chipsBar) chipsBar.style.display = '';
-                    return;
-                }
-
-                const q = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                const resultados = productosDB.filter(p => {
-                    const nombre = p.nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                    const desc = p.descripcion.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                    const cat = p.categoria.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                    return nombre.includes(q) || desc.includes(q) || cat.includes(q);
-                });
-
-                cartaContainer.style.display = 'none';
-                const chipsBar = document.getElementById('carta-chips');
-                if (chipsBar) chipsBar.style.display = 'none';
-                resultsContainer.classList.add('visible');
-                resultsTitle.textContent = resultados.length > 0
-                    ? `${resultados.length} resultado${resultados.length > 1 ? 's' : ''} para "${query}"`
-                    : `Sin resultados para "${query}"`;
-
-                resultsGrid.innerHTML = '';
-                resultados.forEach(prod => {
-                    resultsGrid.appendChild(crearFilaProducto(prod, true));
-                });
-            }, 250);
-        }
-
-        function clearSearch() {
-            document.getElementById('search-input').value = '';
-            handleSearch('');
-        }
 
         // ============================================================
         //  ACCESIBILIDAD: FOCO Y TECLADO
@@ -3037,6 +3064,7 @@
         function cerrarTodo() {
             document.getElementById('cart-sidebar').classList.remove('open');
             document.getElementById('ui-overlay').classList.remove('open');
+            cerrarModalProducto();
             document.body.style.overflow = '';
             restaurarFoco();
         }
@@ -3541,6 +3569,55 @@
                 }
             }
         });
+        function abrirModalProducto(prodData) {
+            try {
+                const prod = JSON.parse(decodeURIComponent(prodData));
+                document.getElementById('product-modal-img').src = prod.imagen || '';
+                document.getElementById('product-modal-img').style.display = prod.imagen ? 'block' : 'none';
+                document.getElementById('product-modal-title').textContent = prod.nombre || '';
+                document.getElementById('product-modal-desc').textContent = prod.descripcion || '';
+                document.getElementById('product-modal-price').textContent = prod.precio ? '$' + prod.precio.toLocaleString('es-AR') : '';
+                
+                document.getElementById('product-modal-overlay').classList.add('open');
+                document.body.style.overflow = 'hidden';
+            } catch (e) {
+                console.error("Error abriendo modal de producto", e);
+            }
+        }
+
+        function cerrarModalProducto() {
+            document.getElementById('product-modal-overlay').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function scrollChips(dir) {
+            const container = document.getElementById('carta-chips-scroll');
+            if(container) {
+                const scrollAmount = window.innerWidth * 0.6;
+                container.scrollBy({ left: dir * scrollAmount, behavior: 'smooth' });
+            }
+        }
+
+        // Detect scroll position to hide/show arrows
+        document.addEventListener('DOMContentLoaded', () => {
+            const scrollContainer = document.getElementById('carta-chips-scroll');
+            const leftArrow = document.getElementById('nav-arrow-left');
+            const rightArrow = document.getElementById('nav-arrow-right');
+            
+            if(scrollContainer && leftArrow && rightArrow) {
+                const updateArrows = () => {
+                    leftArrow.classList.toggle('hidden', scrollContainer.scrollLeft <= 5);
+                    rightArrow.classList.toggle('hidden', scrollContainer.scrollLeft >= scrollContainer.scrollWidth - scrollContainer.clientWidth - 5);
+                };
+                
+                scrollContainer.addEventListener('scroll', updateArrows, {passive: true});
+                window.addEventListener('resize', updateArrows, {passive: true});
+                
+                // Init after slight delay to ensure elements are rendered
+                setTimeout(updateArrows, 500);
+            }
+        });
+
     </script>
 </body>
 
