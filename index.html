@@ -162,7 +162,7 @@
                pelea con el gesto rápido y produce scroll trabado. Se restaura solo
                en dispositivos con puntero fino (desktop), donde las anclas se
                desplazan suaves sin conflicto con el gesto táctil. */
-            scroll-padding-top: 140px;
+            scroll-padding-top: calc(var(--nav-height, 78px) + 62px);
         }
 
         @media (hover: hover) {
@@ -771,7 +771,7 @@
            ============================================ */
         .carta-chips {
             position: sticky;
-            top: 78px;
+            top: var(--nav-height, 78px);
             z-index: 900;
             background: var(--bg);
             padding: 12px 0;
@@ -1783,9 +1783,8 @@
            RESPONSIVE
            ============================================ */
         @media (max-width: 768px) {
-            .carta-chips {
-                top: 66px;
-            }
+            /* --nav-height se calcula dinámicamente en JS para evitar que los
+               chips queden eclipsados por el nav cuando envuelve en móvil */
 
             .nav-links {
                 display: none;
@@ -3454,9 +3453,29 @@
         // ============================================================
         //  INIT
         // ============================================================
+        // Sincroniza la altura real del nav fijo con la variable CSS --nav-height
+        // para que los chips sticky no queden eclipsados en móviles.
+        function syncNavHeight() {
+            const nav = document.querySelector('nav');
+            if (nav) {
+                document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             // Theme
             loadTheme();
+
+            // Nav height sync (chips sticky no eclipsados)
+            syncNavHeight();
+            const navEl = document.querySelector('nav');
+            if (navEl && typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(syncNavHeight).observe(navEl);
+            }
+            window.addEventListener('resize', syncNavHeight);
+            // Safety net: re-mide después de 1s por si las fuentes web
+            // (Google Fonts) cambian la altura del nav al cargar
+            setTimeout(syncNavHeight, 1000);
 
             // Horario
             checkHorario();
@@ -3541,6 +3560,22 @@
                 }
             }
         });
+
+        // IIFE: corre inmediatamente para setear --nav-height antes del primer paint
+        // (no espera a DOMContentLoaded, evitando un flash de chips mal posicionados)
+        (function() {
+            const nav = document.querySelector('nav');
+            if (nav) {
+                document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
+            }
+            // Safety net: re-mide después de 1s (fuentes/imágenes pueden cambiar la altura)
+            setTimeout(function() {
+                const nav2 = document.querySelector('nav');
+                if (nav2) {
+                    document.documentElement.style.setProperty('--nav-height', nav2.offsetHeight + 'px');
+                }
+            }, 1000);
+        })();
     </script>
 </body>
 

@@ -17,17 +17,34 @@ function jsonError(message, status = 400) {
   return json({ error: message }, status);
 }
 
-function corsHeaders() {
+const ALLOWED_ORIGINS = [
+  'https://lomitosarabesfsa.pages.dev',
+  'http://localhost:8787',
+];
+
+function getCorsOrigin(request) {
+  const origin = request.headers.get('Origin') || '';
+  // Archivos locales (file://) → el header Origin es null, permitimos con asterisco
+  // Request desde curl/Postman → sin header, permitimos
+  if (!origin) return '*';
+  // Origin conocido → reflejamos exacto
+  if (ALLOWED_ORIGINS.includes(origin)) return origin;
+  // Origin desconocido → rechazamos (sin header ACA-Origin = bloqueado por navegador)
+  return '';
+}
+
+function corsHeaders(request) {
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': getCorsOrigin(request),
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
   };
 }
 
-function applyCors(response) {
+function applyCors(response, request) {
   const r = new Response(response.body, response);
-  Object.entries(corsHeaders()).forEach(([k, v]) => r.headers.set(k, v));
+  Object.entries(corsHeaders(request)).forEach(([k, v]) => r.headers.set(k, v));
   return r;
 }
 
@@ -211,72 +228,72 @@ export default {
     const path = url.pathname.replace(/\/+$/, '');
 
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders() });
+      return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
 
     try {
       // Público
       if (request.method === 'GET' && path === '/api/menu') {
-        return applyCors(json(await getMenu(envLocal)));
+        return applyCors(json(await getMenu(envLocal)), request);
       }
       if (request.method === 'POST' && path === '/api/login') {
-        return applyCors(await login(request, envLocal));
+        return applyCors(await login(request, envLocal), request);
       }
 
       // ---- Zona admin (requiere token) ----
       const user = await requireAuth(request, envLocal);
       if (path.startsWith('/api/admin') && !user) {
-        return applyCors(jsonError('No autorizado', 401));
+        return applyCors(jsonError('No autorizado', 401), request);
       }
 
       if (path === '/api/admin/productos') {
-        if (request.method === 'GET') return applyCors(await listarProductos(envLocal));
-        if (request.method === 'POST') return applyCors(await crearProducto(envLocal, await request.json()));
+        if (request.method === 'GET') return applyCors(await listarProductos(envLocal), request);
+        if (request.method === 'POST') return applyCors(await crearProducto(envLocal, await request.json()), request);
       }
       const prodMatch = path.match(/^\/api\/admin\/productos\/(\d+)$/);
       if (prodMatch) {
         const id = prodMatch[1];
-        if (request.method === 'PUT') return applyCors(await actualizarProducto(envLocal, id, await request.json()));
-        if (request.method === 'DELETE') return applyCors(await eliminarProducto(envLocal, id));
+        if (request.method === 'PUT') return applyCors(await actualizarProducto(envLocal, id, await request.json()), request);
+        if (request.method === 'DELETE') return applyCors(await eliminarProducto(envLocal, id), request);
       }
 
       if (path === '/api/admin/categorias') {
-        if (request.method === 'GET') return applyCors(await listarCategorias(envLocal));
-        if (request.method === 'POST') return applyCors(await crearCategoria(envLocal, await request.json()));
+        if (request.method === 'GET') return applyCors(await listarCategorias(envLocal), request);
+        if (request.method === 'POST') return applyCors(await crearCategoria(envLocal, await request.json()), request);
       }
       const catMatch = path.match(/^\/api\/admin\/categorias\/(\d+)$/);
       if (catMatch && request.method === 'DELETE') {
-        return applyCors(await eliminarCategoria(envLocal, catMatch[1]));
+        return applyCors(await eliminarCategoria(envLocal, catMatch[1]), request);
       }
 
       if (path === '/api/admin/promos') {
         if (request.method === 'GET') {
           const rows = (await envLocal.DB.prepare('SELECT * FROM promos ORDER BY id').all()).results;
-          return applyCors(json(rows));
+          return applyCors(json(rows), request);
         }
         if (request.method === 'PUT') {
-          return applyCors(await guardarPromos(envLocal, await request.json()));
+          return applyCors(await guardarPromos(envLocal, await request.json()), request);
         }
       }
 
       if (path === '/api/admin/config') {
-        if (request.method === 'GET') return applyCors(await getConfig(envLocal));
-        if (request.method === 'PUT') return applyCors(await guardarConfig(envLocal, await request.json()));
+        if (request.method === 'GET') return applyCors(await getConfig(envLocal), request);
+        if (request.method === 'PUT') return applyCors(await guardarConfig(envLocal, await request.json()), request);
       }
 
       if (path === '/api/admin/imagen' && request.method === 'POST') {
         try {
           const r = await subirImagen(await request.json(), envLocal);
-          return applyCors(json({ ok: true, ...r }));
+          return applyCors(json({ ok: true, ...r }), request);
         } catch (e) {
-          return applyCors(jsonError(e.message, 400));
+          return applyCors(jsonError(e.message, 400), request);
         }
       }
 
-      return applyCors(jsonError('Ruta no encontrada', 404));
+      return applyCors(jsonError('Ruta no encontrada', 404), request);
     } catch (e) {
       console.error(e);
-      return applyCors(jsonError('Error interno: ' + e.message, 500));
+      return applyCors(jsonError('Error interno: ' + e.message, 500), request);
     }
   },
 };

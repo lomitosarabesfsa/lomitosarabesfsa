@@ -6,12 +6,18 @@ La web pública consume la API (`/api/menu`) y el panel la edita. Adiós planill
 ## Arquitectura
 
 ```
-Web pública (Netlify) ──▶ GET /api/menu ──┐
-                                          ├─▶ Cloudflare Worker (lomitos-api)
-Admin panel (estático) ──▶ /api/admin/* ──┘        │
-   (login + CRUD)                                   ├─▶ D1 (SQLite: productos, categorías, promos, config)
-                                                    └─▶ R2 (fotos: bucket lomitosarabesfsar2)
+Web pública (Cloudflare Pages) ──▶ GET /api/menu ──┐
+                                                   ├─▶ Cloudflare Worker (lomitos-api)
+Admin panel (estático, local) ──▶ /api/admin/* ──┘        │
+   (login + CRUD)                                         ├─▶ D1 (SQLite: productos, categorías, promos, config)
+                                                          └─▶ R2 (fotos: bucket lomitosarabesfsar2)
 ```
+
+| Servicio | URL |
+|----------|-----|
+| Landing | `https://lomitosarabesfsa.pages.dev` |
+| API | `https://lomitos-api.gapersingula97.workers.dev` |
+| Panel Admin | Abrir `admin/panel/index.html` (local) |
 
 Costo: **$0/mes** (planes gratuitos de Cloudflare).
 
@@ -69,34 +75,83 @@ printf '%s' 'TU_CLAVE' | npx wrangler secret put ADMIN_PASS --name lomitos-api
 La URL `pub-*.r2.dev` es de desarrollo (con límite de tasa); alcanza de sobra para el tráfico de un local.
 Si el negocio crece mucho, se conecta un dominio propio desde el dashboard (sin costo).
 
-### 6. Deploy del Worker
+### 6. Deploy del Worker (API)
 ```bash
+cd admin
 npx wrangler deploy
 ```
-Queda disponible en `https://lomitos-api.<tu-subdominio>.workers.dev`.
+Queda disponible en `https://lomitos-api.gapersingula97.workers.dev`.
 
-### 7. Publicar el panel admin
-Subir la carpeta `panel/` a un hosting estático (el mismo Netlify u otro).
-Antes, editar en `panel/index.html` la línea:
-```js
-const API_BASE = 'https://lomitos-api.<tu-subdominio>.workers.dev';
+### 7. Crear el proyecto en Cloudflare Pages
+```bash
+cd ..
+npx wrangler pages project create lomitosarabesfsa --production-branch main
 ```
-**Entrar por primera vez con `admin / admin123` y cambiá la clave de inmediato** (secrets ADMIN_USER/ADMIN_PASS).
+Resultado:
+```
+✨ Successfully created the 'lomitosarabesfsa' project.
+   It will be available at https://lomitosarabesfsa.pages.dev/
+```
 
-### 8. (Opcional) Migrar la web pública del CSV a la API
-Cuando el Worker esté en línea, la web puede leer `https://lomitos-api.<subdominio>.workers.dev/api/menu` en vez del CSV.
-El formato JSON ya está contemplado en la web (`procesarMenuJSON`). Se hace en un paso posterior para no romper nada.
+> **Nota**: El nombre del proyecto define el subdominio. `lomitosarabesfsa` → `lomitosarabesfsa.pages.dev`.
+
+### 8. Deployar la landing page
+```bash
+npx wrangler pages deploy . --project-name lomitosarabesfsa --branch main
+```
+Resultado:
+```
+Uploading... (0/N)
+✨ Success! Uploaded N files
+🌎 Deploying...
+✨ Deployment complete!
+```
+
+### 9. Verificar
+Abrir `https://lomitosarabesfsa.pages.dev` en el navegador. La landing carga los menús desde la API.
+
+### 10. Publicar el panel admin
+Abrir `admin/panel/index.html` directamente en el navegador (es un archivo estático local).
+El panel ya apunta al Worker: `https://lomitos-api.gapersingula97.workers.dev`.
+**Entrar por primera vez con `admin / admin123` y cambiá la clave de inmediato** (secrets ADMIN_USER/ADMIN_PASS).
 
 ## Comandos útiles
 
 ```bash
-npx wrangler dev --local          # probar el Worker local (D1/R2 simulados)
-node scripts/migrar-planilla.js   # regenerar seed.sql desde la planilla
+# Redeployar la landing
+cd ..
+npx wrangler pages deploy . --project-name lomitosarabesfsa --branch main
+
+# Redeployar el Worker (API)
+cd admin && npx wrangler deploy
+
+# Probar el Worker local (D1/R2 simulados)
+npx wrangler dev --local
+
+# Verificar productos
 npx wrangler d1 execute lomitos-db --remote --command "SELECT COUNT(*) FROM productos"
-npx wrangler tail                 # ver logs en vivo del Worker
+
+# Ejecutar SQL directo
+npx wrangler d1 execute lomitos-db --remote --command "UPDATE productos SET precio = 5000 WHERE id = 1"
+
+# Ver logs en vivo
+cd admin && npx wrangler tail
 ```
 
 ## Seguridad
 - El bucket R2 es **solo lectura pública** (las fotos); las claves de escritura quedan en el Worker.
 - Las credenciales del `.env` raíz **no se suben a git** (`.gitignore` ya las excluye).
 - **Rotar el token R2** si alguna vez se compartió en un chat.
+- **CORS restrictivo**: el Worker solo acepta requests de `lomitosarabesfsa.pages.dev` y `localhost:8787`. Para agregar otro origen, editar `ALLOWED_ORIGINS` en `worker/src/index.js`.
+
+## Troubleshooting
+
+| Problema | Solución |
+|----------|----------|
+| "Ruta no encontrada" en `/` | Normal: el Worker es solo API, la landing va en Pages |
+| Login falla en panel admin | Verificar secrets con `npx wrangler secret list`, repetir en modo interactivo |
+| Imágenes no se ven | Verificar `R2_PUBLIC_URL` en wrangler.toml |
+| CORS error en consola | Verificar que el Origin esté en `ALLOWED_ORIGINS` en `worker/src/index.js` |
+| "No autorizado" | Token expirado (12 h): hacer login de nuevo |
+| Landing no carga menú | Verificar que el Worker esté deployado y que `/api/menu` responda |
+| Pages deploy falla | Verificar que estás autenticado con `npx wrangler whoami` |
