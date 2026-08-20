@@ -162,7 +162,7 @@
                pelea con el gesto rápido y produce scroll trabado. Se restaura solo
                en dispositivos con puntero fino (desktop), donde las anclas se
                desplazan suaves sin conflicto con el gesto táctil. */
-            scroll-padding-top: calc(var(--nav-height, 78px) + 62px);
+            scroll-padding-top: 140px;
         }
 
         @media (hover: hover) {
@@ -1853,8 +1853,6 @@
            RESPONSIVE
            ============================================ */
         @media (max-width: 768px) {
-            /* --nav-height se calcula dinámicamente en JS para evitar que los
-               chips queden eclipsados por el nav cuando envuelve en móvil */
             .carta-chips {
                 top: var(--nav-height, 80px);
             }
@@ -3486,29 +3484,9 @@
         // ============================================================
         //  INIT
         // ============================================================
-        // Sincroniza la altura real del nav fijo con la variable CSS --nav-height
-        // para que los chips sticky no queden eclipsados en móviles.
-        function syncNavHeight() {
-            const nav = document.querySelector('nav');
-            if (nav) {
-                document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', async () => {
             // Theme
             loadTheme();
-
-            // Nav height sync (chips sticky no eclipsados)
-            syncNavHeight();
-            const navEl = document.querySelector('nav');
-            if (navEl && typeof ResizeObserver !== 'undefined') {
-                new ResizeObserver(syncNavHeight).observe(navEl);
-            }
-            window.addEventListener('resize', syncNavHeight);
-            // Safety net: re-mide después de 1s por si las fuentes web
-            // (Google Fonts) cambian la altura del nav al cargar
-            setTimeout(syncNavHeight, 1000);
 
             // Horario
             checkHorario();
