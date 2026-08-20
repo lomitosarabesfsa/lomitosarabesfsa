@@ -3629,10 +3629,26 @@
                 };
                 syncNavHeight();
                 window.addEventListener('resize', syncNavHeight, {passive: true});
-                // Re-check after fonts/images load (may change nav height)
                 window.addEventListener('load', syncNavHeight);
             }
         });
+
+        // Also run immediately in case DOMContentLoaded already fired
+        (function() {
+            const nav = document.getElementById('navbar');
+            if (nav) {
+                const h = nav.getBoundingClientRect().height;
+                document.documentElement.style.setProperty('--nav-height', h + 'px');
+            }
+            // Safety net: re-measure after a brief delay (fonts/images may shift height)
+            setTimeout(function() {
+                const nav2 = document.getElementById('navbar');
+                if (nav2) {
+                    const h2 = nav2.getBoundingClientRect().height;
+                    document.documentElement.style.setProperty('--nav-height', h2 + 'px');
+                }
+            }, 1000);
+        })();
 
     </script>
 </body>
