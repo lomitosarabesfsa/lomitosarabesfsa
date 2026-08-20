@@ -687,7 +687,7 @@
            ============================================ */
         .carta-chips {
             position: sticky;
-            top: 86px; /* Increased from 78px to prevent header overlap on mobile */
+            top: var(--nav-height, 80px); /* Dynamically set by JS based on actual navbar height */
             z-index: 900;
             background: linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.9) 100%);
             backdrop-filter: blur(15px);
@@ -3617,6 +3617,20 @@
                 
                 // Init after slight delay to ensure elements are rendered
                 setTimeout(updateArrows, 500);
+            }
+
+            // Dynamically measure navbar height and set CSS variable
+            // so .carta-chips sticky top never overlaps with the nav
+            const navbar = document.getElementById('navbar');
+            if (navbar) {
+                const syncNavHeight = () => {
+                    const h = navbar.getBoundingClientRect().height;
+                    document.documentElement.style.setProperty('--nav-height', h + 'px');
+                };
+                syncNavHeight();
+                window.addEventListener('resize', syncNavHeight, {passive: true});
+                // Re-check after fonts/images load (may change nav height)
+                window.addEventListener('load', syncNavHeight);
             }
         });
 
