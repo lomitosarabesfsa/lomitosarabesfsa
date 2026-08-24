@@ -2878,6 +2878,42 @@
         }
 
         // ============================================================
+        //  CARGAR Y PROCESAR DATOS DESDE LA API
+        // ============================================================
+        function procesarMenuJSON(data) {
+            // Fuente: API del Worker (admin panel).
+            productosDB = [];
+            categorias = new Map();
+            if (!data || !Array.isArray(data.categorias)) return;
+            data.categorias.forEach(cat => {
+                const icono = cat.icono || '🍽️';
+                categorias.set(cat.nombre, { icono, count: cat.productos.length });
+                cat.productos.forEach(p => {
+                    productosDB.push({
+                        id: 'api-' + p.id,
+                        categoria: cat.nombre,
+                        categoriaId: cat.id,
+                        nombre: p.nombre || 'Producto',
+                        descripcion: p.descripcion || '',
+                        precio: Number(p.precio) || 0,
+                        stock: (p.stock === undefined || p.stock === null) ? -1 : Number(p.stock),
+                        imagen: p.imagen || '',
+                        modifier_groups: Array.isArray(p.modifier_groups) ? p.modifier_groups : [],
+                    });
+                });
+            });
+            if (Array.isArray(data.promos)) {
+                CONFIG.PROMOS = data.promos.map(x => ({ icono: x.icono, texto: x.texto, descripcion: x.descripcion }));
+            }
+            if (data.config && data.config.horarios) CONFIG.HORARIO = data.config.horarios;
+            if (data.config && Array.isArray(data.config.galeria)) CONFIG.GALLERY = data.config.galeria;
+            if (data.config && data.config.whatsapp) CONFIG.WHATSAPP = data.config.whatsapp;
+            renderizarCarta();
+            renderPromos();
+            renderGallery();
+        }
+
+        // ============================================================
         //  RENDERIZADO DE LA CARTA (todo el menú a la vista)
         // ============================================================
         let cartaEventSent = false; // ver_carta solo una vez por carga (caché + red = 1 evento)
