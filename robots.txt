@@ -3,4 +3,4 @@ Allow: /
 
 Disallow: /auditoria-seo-lomitos.html
 
-Sitemap: https://lomitosarabesfsa.github.io/lomitosarabesfsa/sitemap.xml
+Sitemap: https://lomitosarabesfsa.pages.dev/sitemap.xml

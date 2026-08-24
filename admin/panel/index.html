@@ -103,6 +103,7 @@
       <button data-tab="categorias" onclick="showTab('categorias')">🗂️ Categorías</button>
       <button data-tab="promos" onclick="showTab('promos')">🔥 Promos</button>
       <button data-tab="horarios" onclick="showTab('horarios')">🕒 Horarios</button>
+      <button data-tab="adicionales" onclick="showTab('adicionales')">➕ Adicionales</button>
       <button data-tab="galeria" onclick="showTab('galeria')">📸 Galería</button>
       <button data-tab="config" onclick="showTab('config')">⚙️ Config</button>
     </div>
@@ -131,6 +132,13 @@
       <div class="toolbar"><h2>Horarios</h2><button class="btn-primary" onclick="guardarHorarios()">💾 Guardar horarios</button></div>
       <div id="lista-horarios"></div>
       <p style="color:var(--muted);font-size:.8rem;margin-top:12px">Dejá el horario vacío si ese día está cerrado.</p>
+    </div>
+
+    <!-- Adicionales -->
+    <div class="tab" id="tab-adicionales">
+      <div class="toolbar"><h2>Adicionales (extras)</h2><button class="btn-primary" onclick="abrirAdicional()">+ Nuevo adicional</button></div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:16px">Asociá un adicional a un <strong>producto específico</strong> o a toda una <strong>categoría</strong>. El comensal los ve como opcionales al agregar al carrito.</p>
+      <div id="lista-adicionales"></div>
     </div>
 
     <!-- Galería -->
@@ -174,9 +182,9 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const API_BASE = 'https://lomitos-api.gapersingula97.workers.dev';
+const API_BASE = location.hostname === 'localhost' ? 'http://localhost:8787' : 'https://lomitos-api.gapersingula97.workers.dev';
 let token = localStorage.getItem('lomitos_admin_token') || '';
-let productos = [], categorias = [], promos = [], horarios = {}, galeria = [], editandoId = null, urlSubida = '';
+let productos = [], categorias = [], promos = [], horarios = {}, galeria = [], adicionales = [], editandoId = null, editandoAdicId = null, urlSubida = '';
 
 // ---------- Utilidades ----------
 function $(id) { return document.getElementById(id); }
@@ -238,8 +246,8 @@ function showTab(nombre) {
 async function cargarTodo() {
   try {
     // allSettled: un endpoint que falle no tumba la carga completa
-    const [rP, rC, rPr, rCfg] = await Promise.allSettled([
-      api('/api/admin/productos'), api('/api/admin/categorias'), api('/api/admin/promos'), api('/api/admin/config'),
+    const [rP, rC, rPr, rCfg, rAd] = await Promise.allSettled([
+      api('/api/admin/productos'), api('/api/admin/categorias'), api('/api/admin/promos'), api('/api/admin/config'), api('/api/admin/adicionales'),
     ]);
     if (rP.status === 'rejected' && (rP.reason.message.includes('401') || rP.reason.message.includes('autorizado'))) {
       logout();
@@ -252,7 +260,8 @@ async function cargarTodo() {
     horarios = config.horarios || {};
     galeria = config.galeria || [];
     $('config-whatsapp').value = config.whatsapp || '';
-    renderProductos(); renderCategorias(); renderPromos(); renderHorarios(); renderGaleria();
+    adicionales = rAd.status === 'fulfilled' ? rAd.value : [];
+    renderProductos(); renderCategorias(); renderPromos(); renderHorarios(); renderGaleria(); renderAdicionales();
   } catch (e) {
     toast(e.message, true);
   }
@@ -463,6 +472,88 @@ async function guardarConfig() {
     await api('/api/admin/config', 'PUT', { whatsapp: $('config-whatsapp').value.trim() });
     toast('Configuración guardada ✓');
   } catch (e) { toast(e.message, true); }
+}
+
+// ---------- Adicionales ----------
+function renderAdicionales() {
+  const cont = $('lista-adicionales');
+  if (!adicionales.length) { cont.innerHTML = '<p class="empty">Sin adicionales. Creá uno para ofrecer extras en el menú.</p>'; return; }
+  cont.innerHTML = '';
+  adicionales.forEach(a => {
+    const tipo = a.producto_id
+      ? `Producto: ${escapeHtml(a.producto_nombre || '?')}`
+      : `Categoría: ${escapeHtml(a.categoria_nombre || '?')}`;
+    const badge = a.activo ? '<span class="badge-stock ok">ACTIVO</span>' : '<span class="badge-stock agotado">INACTIVO</span>';
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <div class="info">
+        <h3>${escapeHtml(a.nombre)} ${badge}</h3>
+        <div class="meta">${tipo}</div>
+        <div class="price">+$${Number(a.precio).toLocaleString('es-AR')}</div>
+      </div>
+      <div class="actions">
+        <button class="btn-mini" onclick="editarAdicional(${a.id})">Editar</button>
+        <button class="btn-mini danger" onclick="eliminarAdicional(${a.id})">Borrar</button>
+      </div>`;
+    cont.appendChild(div);
+  });
+}
+function abrirAdicional(id = null) {
+  editandoAdicId = id;
+  let nombre = '', precio = '', productoId = '', categoriaId = '', activo = true, orden = 0;
+  if (id) {
+    const a = adicionales.find(x => x.id === id);
+    if (!a) return;
+    nombre = a.nombre; precio = a.precio; productoId = a.producto_id || '';
+    categoriaId = a.categoria_id || ''; activo = !!a.activo; orden = a.orden;
+  }
+  const opcionesProducto = categorias.map(c => {
+    const prods = productos.filter(p => p.categoria_id === c.id);
+    return prods.map(p => `<option value="${p.id}" ${productoId == p.id ? 'selected' : ''}>${escapeHtml(c.nombre)} → ${escapeHtml(p.nombre)}</option>`).join('');
+  }).join('');
+  const opcionesCategoria = categorias.map(c => `<option value="${c.id}" ${categoriaId == c.id ? 'selected' : ''}>${escapeHtml(c.nombre)}</option>`).join('');
+
+  // Usar el modal existente del producto, reutilizándolo para adicionales
+  $('modal-title').textContent = id ? 'Editar adicional' : 'Nuevo adicional';
+  $('modal-producto').innerHTML = `
+    <h3 id="modal-title">${id ? 'Editar adicional' : 'Nuevo adicional'}</h3>
+    <div class="field"><label>Nombre del adicional *</label><input type="text" id="ad-nombre" value="${escapeHtml(nombre)}"></div>
+    <div class="field"><label>Precio extra ($)</label><input type="number" id="ad-precio" value="${precio}" step="100" min="0"></div>
+    <div class="field"><label>Asociar a producto (opcional)</label><select id="ad-producto"><option value="">— Ninguno —</option>${opcionesProducto}</select></div>
+    <div class="field"><label>Asociar a categoría (opcional)</label><select id="ad-categoria"><option value="">— Ninguna —</option>${opcionesCategoria}</select></div>
+    <div class="field"><label>Orden</label><input type="number" id="ad-orden" value="${orden}" min="0"></div>
+    <div class="field"><label><input type="checkbox" id="ad-activo" ${activo ? 'checked' : ''}> Activo (visible en el menú)</label></div>
+    <div class="actions">
+      <button class="btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-primary" onclick="guardarAdicional()">Guardar</button>
+    </div>
+  `;
+  $('overlay').classList.add('open');
+}
+function editarAdicional(id) { abrirAdicional(id); }
+async function guardarAdicional() {
+  const nombre = $('ad-nombre').value.trim();
+  if (!nombre) { toast('El nombre es obligatorio', true); return; }
+  const body = {
+    nombre,
+    precio: parseFloat($('ad-precio').value) || 0,
+    producto_id: $('ad-producto').value ? parseInt($('ad-producto').value, 10) : null,
+    categoria_id: $('ad-categoria').value ? parseInt($('ad-categoria').value, 10) : null,
+    orden: parseInt($('ad-orden').value, 10) || 0,
+    activo: $('ad-activo').checked ? 1 : 0,
+  };
+  try {
+    if (editandoAdicId) await api('/api/admin/adicionales/' + editandoAdicId, 'PUT', body);
+    else await api('/api/admin/adicionales', 'POST', body);
+    toast('Adicional guardado ✓');
+    cerrarModal(); cargarTodo();
+  } catch (e) { toast(e.message, true); }
+}
+async function eliminarAdicional(id) {
+  if (!confirm('¿Eliminar este adicional?')) return;
+  try { await api('/api/admin/adicionales/' + id, 'DELETE'); toast('Adicional eliminado'); cargarTodo(); }
+  catch (e) { toast(e.message, true); }
 }
 
 // ---------- Helpers ----------

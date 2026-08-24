@@ -39,11 +39,39 @@ CREATE TABLE IF NOT EXISTS usuarios (
   clave_hash TEXT NOT NULL
 );
 
+-- Adicionales: extras que el comensal puede agregar al producto
+-- producto_id  → aplica solo a ese producto (adicional individual)
+-- categoria_id → aplica a TODOS los productos de la categoría
+-- Nunca ambos a la vez (CHECK constraint)
+CREATE TABLE IF NOT EXISTS adicionales (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  producto_id INTEGER REFERENCES productos(id) ON DELETE CASCADE,
+  categoria_id INTEGER REFERENCES categorias(id) ON DELETE CASCADE,
+  nombre TEXT NOT NULL,
+  precio REAL NOT NULL DEFAULT 0,
+  activo INTEGER NOT NULL DEFAULT 1,
+  orden INTEGER NOT NULL DEFAULT 0,
+  CHECK (producto_id IS NOT NULL OR categoria_id IS NOT NULL),
+  CHECK (NOT (producto_id IS NOT NULL AND categoria_id IS NOT NULL))
+);
+
 -- Datos de configuración inicial (se ajustan luego desde el panel)
 INSERT OR IGNORE INTO config (clave, valor) VALUES
   ('horarios', '{"0":{"abre":"20:00","cierra":"00:00"},"1":{"abre":"20:00","cierra":"00:00"},"2":{"abre":"20:00","cierra":"00:00"},"3":{"abre":"20:00","cierra":"00:00"},"4":{"abre":"20:00","cierra":"00:00"},"5":{"abre":"20:00","cierra":"01:00"},"6":{"abre":"20:00","cierra":"01:00"}}'),
   ('galeria', '[]'),
   ('whatsapp', '5493704218188');
+
+-- Índices para adicionales (JOIN por producto o categoría)
+CREATE INDEX IF NOT EXISTS idx_adicionales_producto ON adicionales(producto_id) WHERE activo = 1;
+CREATE INDEX IF NOT EXISTS idx_adicionales_categoria ON adicionales(categoria_id) WHERE activo = 1;
+
+-- Índices para queries frecuentes
+-- getMenu(): SELECT WHERE activo=1 ORDER BY orden (la query más visitada)
+CREATE INDEX IF NOT EXISTS idx_productos_activo_orden ON productos(activo, orden);
+-- listarProductos(): JOIN productos ON categoria_id + ORDER BY orden
+CREATE INDEX IF NOT EXISTS idx_productos_categoria_orden ON productos(categoria_id, orden);
+-- getMenu(): SELECT WHERE activa=1 (promos visibles)
+CREATE INDEX IF NOT EXISTS idx_promos_activa ON promos(activa);
 
 -- Usuario admin por defecto: admin / admin123 (¡CAMBIAR CLAVE en el primer ingreso!)
 INSERT OR IGNORE INTO usuarios (usuario, clave_hash) VALUES

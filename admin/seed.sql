@@ -18,3 +18,10 @@ INSERT INTO productos (id, categoria_id, nombre, descripcion, precio, stock, ima
 INSERT INTO productos (id, categoria_id, nombre, descripcion, precio, stock, imagen, activo, orden) VALUES (12, 3, 'Sprite 1L', '', 3000, -1, '', 1, 12);
 INSERT INTO categorias (id, nombre, icono, orden) VALUES (4, 'Aderezos', '🍽️', 4);
 INSERT INTO productos (id, categoria_id, nombre, descripcion, precio, stock, imagen, activo, orden) VALUES (13, 4, 'Salsita Ajo Extra', '', 2000, -1, '', 1, 13);
+
+-- Adicionales de ejemplo (el admin los edita desde el panel)
+-- Producto específico: Bacon + Cheddar para Árabe Simple Pollo
+INSERT INTO adicionales (id, producto_id, categoria_id, nombre, precio, activo, orden) VALUES (1, 1, NULL, 'Bacon + Cheddar', 5000, 1, 1);
+-- Categoría completa: Salsas extra para todos los Lomitos
+INSERT INTO adicionales (id, producto_id, categoria_id, nombre, precio, activo, orden) VALUES (2, NULL, 1, 'Salsa de Ajo Extra', 1500, 1, 2);
+INSERT INTO adicionales (id, producto_id, categoria_id, nombre, precio, activo, orden) VALUES (3, NULL, 1, 'Guacamole', 2500, 1, 3);

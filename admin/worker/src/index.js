@@ -20,6 +20,8 @@ function jsonError(message, status = 400) {
 const ALLOWED_ORIGINS = [
   'https://lomitosarabesfsa.pages.dev',
   'http://localhost:8787',
+  'http://localhost:3000',
+  'http://localhost:3001',
 ];
 
 function getCorsOrigin(request) {
@@ -109,12 +111,31 @@ async function getMenu(envLocal) {
   const config = {};
   configRows.forEach(r => { try { config[r.clave] = JSON.parse(r.valor); } catch (e) { config[r.clave] = r.valor; } });
 
+  // Adicionales activos: combinados por producto y por categoría
+  const allAdicionales = (await envLocal.DB.prepare('SELECT * FROM adicionales WHERE activo = 1 ORDER BY orden').all()).results;
+
   return {
-    categorias: categorias.map(c => ({
-      id: c.id, nombre: c.nombre, icono: c.icono,
-      productos: productos.filter(p => p.categoria_id === c.id)
-        .map(p => ({ id: p.id, nombre: p.nombre, descripcion: p.descripcion, precio: p.precio, stock: p.stock, imagen: p.imagen })),
-    })),
+    categorias: categorias.map(c => {
+      const catAdicionales = allAdicionales.filter(a => a.categoria_id === c.id)
+        .map(a => ({ id: a.id, nombre: a.nombre, precio: a.precio }));
+      return {
+        id: c.id, nombre: c.nombre, icono: c.icono,
+        adicionales: catAdicionales,
+        productos: productos.filter(p => p.categoria_id === c.id)
+          .map(p => {
+            const prodAdicionales = allAdicionales.filter(a => a.producto_id === p.id)
+              .map(a => ({ id: a.id, nombre: a.nombre, precio: a.precio }));
+            // Combinar: adicionales del producto + adicionales de la categoría (sin duplicados)
+            const idsExistentes = new Set(prodAdicionales.map(a => a.id));
+            const extrasCategoria = catAdicionales.filter(a => !idsExistentes.has(a.id));
+            return {
+              id: p.id, nombre: p.nombre, descripcion: p.descripcion,
+              precio: p.precio, stock: p.stock, imagen: p.imagen,
+              adicionales: [...prodAdicionales, ...extrasCategoria],
+            };
+          }),
+      };
+    }),
     promos: promos.map(p => ({ id: p.id, icono: p.icono, texto: p.texto, descripcion: p.descripcion })),
     config,
   };
@@ -221,6 +242,39 @@ async function getConfig(envLocal) {
   return json(config);
 }
 
+// CRUD Adicionales
+async function listarAdicionales(envLocal) {
+  const rows = (await envLocal.DB.prepare(`
+    SELECT a.*, COALESCE(p.nombre, '') AS producto_nombre, COALESCE(c.nombre, '') AS categoria_nombre
+    FROM adicionales a
+    LEFT JOIN productos p ON p.id = a.producto_id
+    LEFT JOIN categorias c ON c.id = a.categoria_id
+    ORDER BY a.orden`).all()).results;
+  return json(rows);
+}
+
+async function crearAdicional(envLocal, body) {
+  if (!body.nombre) return jsonError('El nombre es obligatorio');
+  if (!body.producto_id && !body.categoria_id) return jsonError('Asociá el adicional a un producto o categoría');
+  if (body.producto_id && body.categoria_id) return jsonError('No se puede asociar a producto Y categoría a la vez');
+  const res = await envLocal.DB.prepare(
+    'INSERT INTO adicionales (producto_id, categoria_id, nombre, precio, activo, orden) VALUES (?, ?, ?, ?, ?, ?)'
+  ).bind(body.producto_id || null, body.categoria_id || null, body.nombre, body.precio || 0, body.activo ?? 1, body.orden || 0).run();
+  return json({ ok: true, id: res.meta.last_row_id }, 201);
+}
+
+async function actualizarAdicional(envLocal, id, body) {
+  const res = await envLocal.DB.prepare(
+    'UPDATE adicionales SET producto_id = ?, categoria_id = ?, nombre = ?, precio = ?, activo = ?, orden = ? WHERE id = ?'
+  ).bind(body.producto_id || null, body.categoria_id || null, body.nombre, body.precio || 0, body.activo ?? 1, body.orden || 0, id).run();
+  return json({ ok: res.meta.changes > 0 });
+}
+
+async function eliminarAdicional(envLocal, id) {
+  const res = await envLocal.DB.prepare('DELETE FROM adicionales WHERE id = ?').bind(id).run();
+  return json({ ok: res.meta.changes > 0 });
+}
+
 // ---------- Router ----------
 export default {
   async fetch(request, envLocal, ctx) {
@@ -279,6 +333,18 @@ export default {
       if (path === '/api/admin/config') {
         if (request.method === 'GET') return applyCors(await getConfig(envLocal), request);
         if (request.method === 'PUT') return applyCors(await guardarConfig(envLocal, await request.json()), request);
+      }
+
+      // Adicionales
+      if (path === '/api/admin/adicionales') {
+        if (request.method === 'GET') return applyCors(await listarAdicionales(envLocal), request);
+        if (request.method === 'POST') return applyCors(await crearAdicional(envLocal, await request.json()), request);
+      }
+      const adicMatch = path.match(/^\/api\/admin\/adicionales\/(\d+)$/);
+      if (adicMatch) {
+        const id = adicMatch[1];
+        if (request.method === 'PUT') return applyCors(await actualizarAdicional(envLocal, id, await request.json()), request);
+        if (request.method === 'DELETE') return applyCors(await eliminarAdicional(envLocal, id), request);
       }
 
       if (path === '/api/admin/imagen' && request.method === 'POST') {
