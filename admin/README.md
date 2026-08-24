@@ -1,6 +1,6 @@
 # 🛠️ Admin Panel — Lomitos Árabes FSA
 
-Panel de gestión para el dueño: productos, precios, stock, fotos (R2), promos, horarios y galería.
+Panel de gestión para el dueño: productos, precios, stock, fotos (R2), modifier groups, promos, horarios y galería.
 La web pública consume la API (`/api/menu`) y el panel la edita. Adiós planilla de Google Sheets. 💪
 
 ## Arquitectura

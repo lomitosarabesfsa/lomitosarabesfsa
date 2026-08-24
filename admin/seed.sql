@@ -19,9 +19,14 @@ INSERT INTO productos (id, categoria_id, nombre, descripcion, precio, stock, ima
 INSERT INTO categorias (id, nombre, icono, orden) VALUES (4, 'Aderezos', '🍽️', 4);
 INSERT INTO productos (id, categoria_id, nombre, descripcion, precio, stock, imagen, activo, orden) VALUES (13, 4, 'Salsita Ajo Extra', '', 2000, -1, '', 1, 13);
 
--- Adicionales de ejemplo (el admin los edita desde el panel)
--- Producto específico: Bacon + Cheddar para Árabe Simple Pollo
-INSERT INTO adicionales (id, producto_id, categoria_id, nombre, precio, activo, orden) VALUES (1, 1, NULL, 'Bacon + Cheddar', 5000, 1, 1);
--- Categoría completa: Salsas extra para todos los Lomitos
-INSERT INTO adicionales (id, producto_id, categoria_id, nombre, precio, activo, orden) VALUES (2, NULL, 1, 'Salsa de Ajo Extra', 1500, 1, 2);
-INSERT INTO adicionales (id, producto_id, categoria_id, nombre, precio, activo, orden) VALUES (3, NULL, 1, 'Guacamole', 2500, 1, 3);
+-- Modifier Groups de ejemplo (el admin los edita desde el panel)
+-- Grupo "Extras" para la categoría Lomitos (aplica a todos, selección múltiple)
+INSERT INTO modifier_groups (id, producto_id, categoria_id, nombre, selection_type, required, min_seleccion, max_seleccion, orden, activo) VALUES (1, NULL, 1, 'Extras', 'multiple', 0, 0, 5, 1, 1);
+INSERT INTO modifier_options (id, group_id, nombre, price_delta, orden, activo) VALUES (1, 1, 'Bacon + Cheddar', 5000, 1, 1);
+INSERT INTO modifier_options (id, group_id, nombre, price_delta, orden, activo) VALUES (2, 1, 'Guacamole', 2500, 2, 1);
+INSERT INTO modifier_options (id, group_id, nombre, price_delta, orden, activo) VALUES (3, 1, 'Salsa de Ajo Extra', 1500, 3, 1);
+-- Grupo "Salsa" para Lomitos (selección única)
+INSERT INTO modifier_groups (id, producto_id, categoria_id, nombre, selection_type, required, min_seleccion, max_seleccion, orden, activo) VALUES (2, NULL, 1, 'Salsa', 'single', 0, 0, 1, 2, 1);
+INSERT INTO modifier_options (id, group_id, nombre, price_delta, orden, activo) VALUES (4, 2, 'Salsa de Ajo', 0, 1, 1);
+INSERT INTO modifier_options (id, group_id, nombre, price_delta, orden, activo) VALUES (5, 2, 'Salsa Picante', 0, 2, 1);
+INSERT INTO modifier_options (id, group_id, nombre, price_delta, orden, activo) VALUES (6, 2, 'Salsa Rosada', 0, 3, 1);

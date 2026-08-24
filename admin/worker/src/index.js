@@ -1,9 +1,9 @@
 // ============================================================
 //  LOMITOS ÁRABES FSA — API (Cloudflare Worker)
-//  · GET  /api/menu          → menú público (categorías + productos + promos + config)
-//  · POST /api/login         → { usuario, clave } → token de sesión
-//  · CRUD /api/admin/*       → protegido con token Bearer
-//  · POST /api/admin/imagen  → sube imagen base64 a R2 y devuelve URL pública
+//  · GET  /api/menu              → menú público
+//  · POST /api/login             → autenticación
+//  · CRUD /api/admin/*           → protegido con token Bearer
+//  · POST /api/admin/imagen      → sube imagen a R2
 // ============================================================
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
@@ -26,12 +26,8 @@ const ALLOWED_ORIGINS = [
 
 function getCorsOrigin(request) {
   const origin = request.headers.get('Origin') || '';
-  // Archivos locales (file://) → el header Origin es null, permitimos con asterisco
-  // Request desde curl/Postman → sin header, permitimos
   if (!origin) return '*';
-  // Origin conocido → reflejamos exacto
   if (ALLOWED_ORIGINS.includes(origin)) return origin;
-  // Origin desconocido → rechazamos (sin header ACA-Origin = bloqueado por navegador)
   return '';
 }
 
@@ -63,7 +59,7 @@ function b64url(s) {
 }
 
 async function crearToken(usuario, authSecret) {
-  const exp = Date.now() + 12 * 3600 * 1000; // 12 h
+  const exp = Date.now() + 12 * 3600 * 1000;
   const payload = b64url(JSON.stringify({ u: usuario, exp }));
   const firma = await hmacHex(authSecret, payload);
   return `${payload}.${firma}`;
@@ -102,7 +98,9 @@ async function subirImagen(body, envLocal) {
   return { key, url: base ? `${base}/${key}` : key };
 }
 
-// ---------- Handlers ----------
+// ============================================================
+//  GET /api/menu — Menú público con modifier groups
+// ============================================================
 async function getMenu(envLocal) {
   const categorias = (await envLocal.DB.prepare('SELECT * FROM categorias ORDER BY orden').all()).results;
   const productos = (await envLocal.DB.prepare('SELECT * FROM productos WHERE activo = 1 ORDER BY orden').all()).results;
@@ -111,29 +109,48 @@ async function getMenu(envLocal) {
   const config = {};
   configRows.forEach(r => { try { config[r.clave] = JSON.parse(r.valor); } catch (e) { config[r.clave] = r.valor; } });
 
-  // Adicionales activos: combinados por producto y por categoría
-  const allAdicionales = (await envLocal.DB.prepare('SELECT * FROM adicionales WHERE activo = 1 ORDER BY orden').all()).results;
+  // Modifier groups activos
+  const allGroups = (await envLocal.DB.prepare('SELECT * FROM modifier_groups WHERE activo = 1 ORDER BY orden').all()).results;
+  // Modifier options activos
+  const allOptions = (await envLocal.DB.prepare('SELECT * FROM modifier_options WHERE activo = 1 ORDER BY orden').all()).results;
+
+  // Mapa group_id → options[]
+  const optionsByGroup = new Map();
+  allOptions.forEach(o => {
+    if (!optionsByGroup.has(o.group_id)) optionsByGroup.set(o.group_id, []);
+    optionsByGroup.get(o.group_id).push({ id: o.id, nombre: o.nombre, price_delta: o.price_delta });
+  });
 
   return {
     categorias: categorias.map(c => {
-      const catAdicionales = allAdicionales.filter(a => a.categoria_id === c.id)
-        .map(a => ({ id: a.id, nombre: a.nombre, precio: a.precio }));
+      // Groups de categoría
+      const catGroups = allGroups.filter(g => g.categoria_id === c.id).map(g => ({
+        id: g.id, nombre: g.nombre, selection_type: g.selection_type,
+        required: !!g.required, min_seleccion: g.min_seleccion, max_seleccion: g.max_seleccion,
+        options: optionsByGroup.get(g.id) || [],
+      }));
+
       return {
         id: c.id, nombre: c.nombre, icono: c.icono,
-        adicionales: catAdicionales,
-        productos: productos.filter(p => p.categoria_id === c.id)
-          .map(p => {
-            const prodAdicionales = allAdicionales.filter(a => a.producto_id === p.id)
-              .map(a => ({ id: a.id, nombre: a.nombre, precio: a.precio }));
-            // Combinar: adicionales del producto + adicionales de la categoría (sin duplicados)
-            const idsExistentes = new Set(prodAdicionales.map(a => a.id));
-            const extrasCategoria = catAdicionales.filter(a => !idsExistentes.has(a.id));
-            return {
-              id: p.id, nombre: p.nombre, descripcion: p.descripcion,
-              precio: p.precio, stock: p.stock, imagen: p.imagen,
-              adicionales: [...prodAdicionales, ...extrasCategoria],
-            };
-          }),
+        modifier_groups: catGroups,
+        productos: productos.filter(p => p.categoria_id === c.id).map(p => {
+          // Groups específicos del producto
+          const prodGroups = allGroups.filter(g => g.producto_id === p.id).map(g => ({
+            id: g.id, nombre: g.nombre, selection_type: g.selection_type,
+            required: !!g.required, min_seleccion: g.min_seleccion, max_seleccion: g.max_seleccion,
+            options: optionsByGroup.get(g.id) || [],
+          }));
+
+          // Combinar: groups del producto + groups de categoría (sin duplicar por nombre)
+          const nombresProd = new Set(prodGroups.map(g => g.nombre));
+          const extras = catGroups.filter(g => !nombresProd.has(g.nombre));
+
+          return {
+            id: p.id, nombre: p.nombre, descripcion: p.descripcion,
+            precio: p.precio, stock: p.stock, imagen: p.imagen,
+            modifier_groups: [...prodGroups, ...extras],
+          };
+        }),
       };
     }),
     promos: promos.map(p => ({ id: p.id, icono: p.icono, texto: p.texto, descripcion: p.descripcion })),
@@ -141,20 +158,15 @@ async function getMenu(envLocal) {
   };
 }
 
-// IMPORTANTE: en producción configurar los secrets ADMIN_USER, ADMIN_PASS y AUTH_SECRET
-// con `npx wrangler secret put NOMBRE`. Los valores por defecto son solo para desarrollo local.
+// ============================================================
+//  AUTH
+// ============================================================
 function authSecret(envLocal) {
   return envLocal.AUTH_SECRET || 'cambiar-este-secreto-en-produccion';
 }
 
 async function login(request, envLocal) {
   const body = await request.json().catch(() => ({}));
-  // Normalización de credenciales:
-  //  · Al cargar secrets con `echo`/tuberías puede quedar un salto de línea,
-  //    un \r de Windows o espacios extra dentro del valor almacenado.
-  //  · El usuario también puede tipear espacios sin querer.
-  // Se trima todo y el usuario se compara sin distinguir mayúsculas
-  // (la clave SÍ sigue siendo sensible a mayúsculas).
   const adminUser = String(envLocal.ADMIN_USER || 'admin').trim().toLowerCase();
   const adminPass = String(envLocal.ADMIN_PASS || 'admin123').trim();
   const usuario = String(body.usuario || '').trim().toLowerCase();
@@ -167,12 +179,12 @@ async function login(request, envLocal) {
 
 async function requireAuth(request, envLocal) {
   const token = obtenerToken(request);
-  const data = await verificarToken(token, authSecret(envLocal));
-  if (!data) return null;
-  return data;
+  return await verificarToken(token, authSecret(envLocal));
 }
 
-// CRUD productos
+// ============================================================
+//  CRUD Productos
+// ============================================================
 async function listarProductos(envLocal) {
   const rows = (await envLocal.DB.prepare(`
     SELECT p.*, c.nombre AS categoria_nombre FROM productos p
@@ -199,7 +211,9 @@ async function eliminarProducto(envLocal, id) {
   return json({ ok: res.meta.changes > 0 });
 }
 
-// CRUD categorías
+// ============================================================
+//  CRUD Categorías
+// ============================================================
 async function listarCategorias(envLocal) {
   const rows = (await envLocal.DB.prepare('SELECT * FROM categorias ORDER BY orden').all()).results;
   return json(rows);
@@ -216,17 +230,105 @@ async function eliminarCategoria(envLocal, id) {
   return json({ ok: res.meta.changes > 0 });
 }
 
-// Promos
+// ============================================================
+//  CRUD Modifier Groups
+// ============================================================
+async function listarModifierGroups(envLocal) {
+  const rows = (await envLocal.DB.prepare(`
+    SELECT mg.*, COALESCE(p.nombre, '') AS producto_nombre, COALESCE(c.nombre, '') AS categoria_nombre
+    FROM modifier_groups mg
+    LEFT JOIN productos p ON p.id = mg.producto_id
+    LEFT JOIN categorias c ON c.id = mg.categoria_id
+    ORDER BY mg.orden`).all()).results;
+  // Adjuntar options a cada grupo
+  const allOpts = (await envLocal.DB.prepare('SELECT * FROM modifier_options ORDER BY orden').all()).results;
+  const optsByGroup = new Map();
+  allOpts.forEach(o => {
+    if (!optsByGroup.has(o.group_id)) optsByGroup.set(o.group_id, []);
+    optsByGroup.get(o.group_id).push(o);
+  });
+  return json(rows.map(g => ({ ...g, options: optsByGroup.get(g.id) || [] })));
+}
+
+async function crearModifierGroup(envLocal, body) {
+  if (!body.nombre) return jsonError('El nombre es obligatorio');
+  if (!body.producto_id && !body.categoria_id) return jsonError('Asociá el grupo a un producto o categoría');
+  if (body.producto_id && body.categoria_id) return jsonError('No se puede asociar a producto Y categoría a la vez');
+  const res = await envLocal.DB.prepare(
+    'INSERT INTO modifier_groups (producto_id, categoria_id, nombre, selection_type, required, min_seleccion, max_seleccion, orden, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(
+    body.producto_id || null, body.categoria_id || null,
+    body.nombre, body.selection_type || 'multiple',
+    body.required ? 1 : 0, body.min_seleccion ?? 0, body.max_seleccion ?? 99,
+    body.orden || 0, body.activo ?? 1
+  ).run();
+  return json({ ok: true, id: res.meta.last_row_id }, 201);
+}
+
+async function actualizarModifierGroup(envLocal, id, body) {
+  const res = await envLocal.DB.prepare(
+    'UPDATE modifier_groups SET producto_id = ?, categoria_id = ?, nombre = ?, selection_type = ?, required = ?, min_seleccion = ?, max_seleccion = ?, orden = ?, activo = ? WHERE id = ?'
+  ).bind(
+    body.producto_id || null, body.categoria_id || null,
+    body.nombre, body.selection_type || 'multiple',
+    body.required ? 1 : 0, body.min_seleccion ?? 0, body.max_seleccion ?? 99,
+    body.orden || 0, body.activo ?? 1, id
+  ).run();
+  return json({ ok: res.meta.changes > 0 });
+}
+
+async function eliminarModifierGroup(envLocal, id) {
+  const res = await envLocal.DB.prepare('DELETE FROM modifier_groups WHERE id = ?').bind(id).run();
+  return json({ ok: res.meta.changes > 0 });
+}
+
+// ============================================================
+//  CRUD Modifier Options
+// ============================================================
+async function listarModifierOptions(envLocal, groupId) {
+  const rows = (await envLocal.DB.prepare('SELECT * FROM modifier_options WHERE group_id = ? ORDER BY orden').bind(groupId).all()).results;
+  return json(rows);
+}
+
+async function crearModifierOption(envLocal, body) {
+  if (!body.group_id) return jsonError('group_id es obligatorio');
+  if (!body.nombre) return jsonError('El nombre es obligatorio');
+  const res = await envLocal.DB.prepare(
+    'INSERT INTO modifier_options (group_id, nombre, price_delta, orden, activo) VALUES (?, ?, ?, ?, ?)'
+  ).bind(body.group_id, body.nombre, body.price_delta || 0, body.orden || 0, body.activo ?? 1).run();
+  return json({ ok: true, id: res.meta.last_row_id }, 201);
+}
+
+async function actualizarModifierOption(envLocal, id, body) {
+  const res = await envLocal.DB.prepare(
+    'UPDATE modifier_options SET group_id = ?, nombre = ?, price_delta = ?, orden = ?, activo = ? WHERE id = ?'
+  ).bind(body.group_id, body.nombre, body.price_delta || 0, body.orden || 0, body.activo ?? 1, id).run();
+  return json({ ok: res.meta.changes > 0 });
+}
+
+async function eliminarModifierOption(envLocal, id) {
+  const res = await envLocal.DB.prepare('DELETE FROM modifier_options WHERE id = ?').bind(id).run();
+  return json({ ok: res.meta.changes > 0 });
+}
+
+// ============================================================
+//  Promos
+// ============================================================
 async function guardarPromos(envLocal, body) {
-  await envLocal.DB.prepare('DELETE FROM promos').run();
+  const stmts = [envLocal.DB.prepare('DELETE FROM promos')];
   for (const p of body.promos || []) {
-    await envLocal.DB.prepare('INSERT INTO promos (activa, icono, texto, descripcion) VALUES (?, ?, ?, ?)')
-      .bind(p.activa ? 1 : 0, p.icono || '🔥', p.texto || '', p.descripcion || '').run();
+    stmts.push(
+      envLocal.DB.prepare('INSERT INTO promos (activa, icono, texto, descripcion) VALUES (?, ?, ?, ?)')
+        .bind(p.activa ? 1 : 0, p.icono || '🔥', p.texto || '', p.descripcion || '')
+    );
   }
+  await envLocal.DB.batch(stmts);
   return json({ ok: true });
 }
 
-// Config (horarios, galería, whatsapp)
+// ============================================================
+//  Config
+// ============================================================
 async function guardarConfig(envLocal, body) {
   for (const [clave, valor] of Object.entries(body)) {
     await envLocal.DB.prepare('INSERT INTO config (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor')
@@ -242,40 +344,9 @@ async function getConfig(envLocal) {
   return json(config);
 }
 
-// CRUD Adicionales
-async function listarAdicionales(envLocal) {
-  const rows = (await envLocal.DB.prepare(`
-    SELECT a.*, COALESCE(p.nombre, '') AS producto_nombre, COALESCE(c.nombre, '') AS categoria_nombre
-    FROM adicionales a
-    LEFT JOIN productos p ON p.id = a.producto_id
-    LEFT JOIN categorias c ON c.id = a.categoria_id
-    ORDER BY a.orden`).all()).results;
-  return json(rows);
-}
-
-async function crearAdicional(envLocal, body) {
-  if (!body.nombre) return jsonError('El nombre es obligatorio');
-  if (!body.producto_id && !body.categoria_id) return jsonError('Asociá el adicional a un producto o categoría');
-  if (body.producto_id && body.categoria_id) return jsonError('No se puede asociar a producto Y categoría a la vez');
-  const res = await envLocal.DB.prepare(
-    'INSERT INTO adicionales (producto_id, categoria_id, nombre, precio, activo, orden) VALUES (?, ?, ?, ?, ?, ?)'
-  ).bind(body.producto_id || null, body.categoria_id || null, body.nombre, body.precio || 0, body.activo ?? 1, body.orden || 0).run();
-  return json({ ok: true, id: res.meta.last_row_id }, 201);
-}
-
-async function actualizarAdicional(envLocal, id, body) {
-  const res = await envLocal.DB.prepare(
-    'UPDATE adicionales SET producto_id = ?, categoria_id = ?, nombre = ?, precio = ?, activo = ?, orden = ? WHERE id = ?'
-  ).bind(body.producto_id || null, body.categoria_id || null, body.nombre, body.precio || 0, body.activo ?? 1, body.orden || 0, id).run();
-  return json({ ok: res.meta.changes > 0 });
-}
-
-async function eliminarAdicional(envLocal, id) {
-  const res = await envLocal.DB.prepare('DELETE FROM adicionales WHERE id = ?').bind(id).run();
-  return json({ ok: res.meta.changes > 0 });
-}
-
-// ---------- Router ----------
+// ============================================================
+//  Router
+// ============================================================
 export default {
   async fetch(request, envLocal, ctx) {
     const url = new URL(request.url);
@@ -286,20 +357,33 @@ export default {
     }
 
     try {
-      // Público
+      // ---- Públicas ----
       if (request.method === 'GET' && path === '/api/menu') {
         return applyCors(json(await getMenu(envLocal)), request);
       }
       if (request.method === 'POST' && path === '/api/login') {
+        // Rate limiting básico: máximo 5 intentos por IP por minuto
+        const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        const now = Date.now();
+        if (!globalThis._loginAttempts) globalThis._loginAttempts = new Map();
+        const attempts = globalThis._loginAttempts.get(ip) || [];
+        // Limpiar intentos viejos (>60s)
+        const recent = attempts.filter(t => now - t < 60000);
+        if (recent.length >= 5) {
+          return applyCors(jsonError('Demasiados intentos. Esperá un minuto.', 429), request);
+        }
+        recent.push(now);
+        globalThis._loginAttempts.set(ip, recent);
         return applyCors(await login(request, envLocal), request);
       }
 
-      // ---- Zona admin (requiere token) ----
+      // ---- Admin (requiere token) ----
       const user = await requireAuth(request, envLocal);
       if (path.startsWith('/api/admin') && !user) {
         return applyCors(jsonError('No autorizado', 401), request);
       }
 
+      // Productos
       if (path === '/api/admin/productos') {
         if (request.method === 'GET') return applyCors(await listarProductos(envLocal), request);
         if (request.method === 'POST') return applyCors(await crearProducto(envLocal, await request.json()), request);
@@ -311,6 +395,7 @@ export default {
         if (request.method === 'DELETE') return applyCors(await eliminarProducto(envLocal, id), request);
       }
 
+      // Categorías
       if (path === '/api/admin/categorias') {
         if (request.method === 'GET') return applyCors(await listarCategorias(envLocal), request);
         if (request.method === 'POST') return applyCors(await crearCategoria(envLocal, await request.json()), request);
@@ -320,6 +405,32 @@ export default {
         return applyCors(await eliminarCategoria(envLocal, catMatch[1]), request);
       }
 
+      // Modifier Groups
+      if (path === '/api/admin/modifier-groups') {
+        if (request.method === 'GET') return applyCors(await listarModifierGroups(envLocal), request);
+        if (request.method === 'POST') return applyCors(await crearModifierGroup(envLocal, await request.json()), request);
+      }
+      const mgMatch = path.match(/^\/api\/admin\/modifier-groups\/(\d+)$/);
+      if (mgMatch) {
+        const id = mgMatch[1];
+        if (request.method === 'PUT') return applyCors(await actualizarModifierGroup(envLocal, id, await request.json()), request);
+        if (request.method === 'DELETE') return applyCors(await eliminarModifierGroup(envLocal, id), request);
+      }
+
+      // Modifier Options
+      const moMatch = path.match(/^\/api\/admin\/modifier-options\/?(\d*)$/);
+      if (moMatch) {
+        if (request.method === 'GET' && moMatch[1]) return applyCors(await listarModifierOptions(envLocal, moMatch[1]), request);
+        if (request.method === 'POST') return applyCors(await crearModifierOption(envLocal, await request.json()), request);
+      }
+      const moSingleMatch = path.match(/^\/api\/admin\/modifier-options\/(\d+)$/);
+      if (moSingleMatch && request.method !== 'GET') {
+        const id = moSingleMatch[1];
+        if (request.method === 'PUT') return applyCors(await actualizarModifierOption(envLocal, id, await request.json()), request);
+        if (request.method === 'DELETE') return applyCors(await eliminarModifierOption(envLocal, id), request);
+      }
+
+      // Promos
       if (path === '/api/admin/promos') {
         if (request.method === 'GET') {
           const rows = (await envLocal.DB.prepare('SELECT * FROM promos ORDER BY id').all()).results;
@@ -330,23 +441,13 @@ export default {
         }
       }
 
+      // Config
       if (path === '/api/admin/config') {
         if (request.method === 'GET') return applyCors(await getConfig(envLocal), request);
         if (request.method === 'PUT') return applyCors(await guardarConfig(envLocal, await request.json()), request);
       }
 
-      // Adicionales
-      if (path === '/api/admin/adicionales') {
-        if (request.method === 'GET') return applyCors(await listarAdicionales(envLocal), request);
-        if (request.method === 'POST') return applyCors(await crearAdicional(envLocal, await request.json()), request);
-      }
-      const adicMatch = path.match(/^\/api\/admin\/adicionales\/(\d+)$/);
-      if (adicMatch) {
-        const id = adicMatch[1];
-        if (request.method === 'PUT') return applyCors(await actualizarAdicional(envLocal, id, await request.json()), request);
-        if (request.method === 'DELETE') return applyCors(await eliminarAdicional(envLocal, id), request);
-      }
-
+      // Imagen
       if (path === '/api/admin/imagen' && request.method === 'POST') {
         try {
           const r = await subirImagen(await request.json(), envLocal);
@@ -359,7 +460,8 @@ export default {
       return applyCors(jsonError('Ruta no encontrada', 404), request);
     } catch (e) {
       console.error(e);
-      return applyCors(jsonError('Error interno: ' + e.message, 500), request);
+      // En producción no exponer el mensaje original del error
+      return applyCors(jsonError('Error interno del servidor', 500), request);
     }
   },
 };

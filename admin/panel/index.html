@@ -103,7 +103,7 @@
       <button data-tab="categorias" onclick="showTab('categorias')">🗂️ Categorías</button>
       <button data-tab="promos" onclick="showTab('promos')">🔥 Promos</button>
       <button data-tab="horarios" onclick="showTab('horarios')">🕒 Horarios</button>
-      <button data-tab="adicionales" onclick="showTab('adicionales')">➕ Adicionales</button>
+      <button data-tab="modifiers" onclick="showTab('modifiers')">➕ Modifiers</button>
       <button data-tab="galeria" onclick="showTab('galeria')">📸 Galería</button>
       <button data-tab="config" onclick="showTab('config')">⚙️ Config</button>
     </div>
@@ -134,11 +134,11 @@
       <p style="color:var(--muted);font-size:.8rem;margin-top:12px">Dejá el horario vacío si ese día está cerrado.</p>
     </div>
 
-    <!-- Adicionales -->
-    <div class="tab" id="tab-adicionales">
-      <div class="toolbar"><h2>Adicionales (extras)</h2><button class="btn-primary" onclick="abrirAdicional()">+ Nuevo adicional</button></div>
-      <p style="color:var(--muted);font-size:.85rem;margin-bottom:16px">Asociá un adicional a un <strong>producto específico</strong> o a toda una <strong>categoría</strong>. El comensal los ve como opcionales al agregar al carrito.</p>
-      <div id="lista-adicionales"></div>
+    <!-- Modifier Groups -->
+    <div class="tab" id="tab-modifiers">
+      <div class="toolbar"><h2>Modifier Groups</h2><button class="btn-primary" onclick="abrirModifierGroup()">+ Nuevo grupo</button></div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:16px">Grupos de opciones que el comensal elige al agregar un producto al carrito. Asociá cada grupo a un <strong>producto</strong> o a una <strong>categoría</strong>.</p>
+      <div id="lista-modifiers"></div>
     </div>
 
     <!-- Galería -->
@@ -184,7 +184,7 @@
 <script>
 const API_BASE = location.hostname === 'localhost' ? 'http://localhost:8787' : 'https://lomitos-api.gapersingula97.workers.dev';
 let token = localStorage.getItem('lomitos_admin_token') || '';
-let productos = [], categorias = [], promos = [], horarios = {}, galeria = [], adicionales = [], editandoId = null, editandoAdicId = null, urlSubida = '';
+let productos = [], categorias = [], promos = [], horarios = {}, galeria = [], modifierGroups = [], editandoId = null, editandoGroupId = null, editandoOptionId = null, urlSubida = '';
 
 // ---------- Utilidades ----------
 function $(id) { return document.getElementById(id); }
@@ -246,8 +246,8 @@ function showTab(nombre) {
 async function cargarTodo() {
   try {
     // allSettled: un endpoint que falle no tumba la carga completa
-    const [rP, rC, rPr, rCfg, rAd] = await Promise.allSettled([
-      api('/api/admin/productos'), api('/api/admin/categorias'), api('/api/admin/promos'), api('/api/admin/config'), api('/api/admin/adicionales'),
+    const [rP, rC, rPr, rCfg, rMg] = await Promise.allSettled([
+      api('/api/admin/productos'), api('/api/admin/categorias'), api('/api/admin/promos'), api('/api/admin/config'), api('/api/admin/modifier-groups'),
     ]);
     if (rP.status === 'rejected' && (rP.reason.message.includes('401') || rP.reason.message.includes('autorizado'))) {
       logout();
@@ -260,8 +260,8 @@ async function cargarTodo() {
     horarios = config.horarios || {};
     galeria = config.galeria || [];
     $('config-whatsapp').value = config.whatsapp || '';
-    adicionales = rAd.status === 'fulfilled' ? rAd.value : [];
-    renderProductos(); renderCategorias(); renderPromos(); renderHorarios(); renderGaleria(); renderAdicionales();
+    modifierGroups = rMg.status === 'fulfilled' ? rMg.value : [];
+    renderProductos(); renderCategorias(); renderPromos(); renderHorarios(); renderGaleria(); renderModifierGroups();
   } catch (e) {
     toast(e.message, true);
   }
@@ -474,39 +474,55 @@ async function guardarConfig() {
   } catch (e) { toast(e.message, true); }
 }
 
-// ---------- Adicionales ----------
-function renderAdicionales() {
-  const cont = $('lista-adicionales');
-  if (!adicionales.length) { cont.innerHTML = '<p class="empty">Sin adicionales. Creá uno para ofrecer extras en el menú.</p>'; return; }
+// ---------- Modifier Groups ----------
+function renderModifierGroups() {
+  const cont = $('lista-modifiers');
+  if (!modifierGroups.length) { cont.innerHTML = '<p class="empty">Sin grupos de modificadores. Creá uno para ofrecer extras en el menú.</p>'; return; }
   cont.innerHTML = '';
-  adicionales.forEach(a => {
-    const tipo = a.producto_id
-      ? `Producto: ${escapeHtml(a.producto_nombre || '?')}`
-      : `Categoría: ${escapeHtml(a.categoria_nombre || '?')}`;
-    const badge = a.activo ? '<span class="badge-stock ok">ACTIVO</span>' : '<span class="badge-stock agotado">INACTIVO</span>';
+  modifierGroups.forEach(g => {
+    const tipo = g.producto_id
+      ? `Producto: ${escapeHtml(g.producto_nombre || '?')}`
+      : `Categoría: ${escapeHtml(g.categoria_nombre || '?')}`;
+    const badge = g.activo ? '<span class="badge-stock ok">ACTIVO</span>' : '<span class="badge-stock agotado">INACTIVO</span>';
+    const selType = g.selection_type === 'single' ? '🔘 Única' : '☑️ Múltiple';
+    const options = Array.isArray(g.options) ? g.options : [];
+    const optionsList = options.map(o =>
+      `<span style="display:inline-block;background:var(--surface2);padding:3px 10px;border-radius:8px;font-size:.8rem;margin:2px">${escapeHtml(o.nombre)} ${o.price_delta > 0 ? '<span style="color:var(--primary)">+$' + Number(o.price_delta).toLocaleString('es-AR') + '</span>' : '<span style="color:var(--muted)">gratis</span>'}</span>`
+    ).join('');
     const div = document.createElement('div');
     div.className = 'card';
+    div.style.flexDirection = 'column';
+    div.style.alignItems = 'flex-start';
     div.innerHTML = `
-      <div class="info">
-        <h3>${escapeHtml(a.nombre)} ${badge}</h3>
-        <div class="meta">${tipo}</div>
-        <div class="price">+$${Number(a.precio).toLocaleString('es-AR')}</div>
+      <div style="display:flex;align-items:center;width:100%;gap:10px">
+        <div class="info" style="flex:1">
+          <h3>${escapeHtml(g.nombre)} ${badge}</h3>
+          <div class="meta">${tipo} · ${selType}</div>
+        </div>
+        <div class="actions">
+          <button class="btn-mini" onclick="editarModifierGroup(${g.id})">Editar</button>
+          <button class="btn-mini danger" onclick="eliminarModifierGroup(${g.id})">Borrar</button>
+        </div>
       </div>
-      <div class="actions">
-        <button class="btn-mini" onclick="editarAdicional(${a.id})">Editar</button>
-        <button class="btn-mini danger" onclick="eliminarAdicional(${a.id})">Borrar</button>
-      </div>`;
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+        <span style="font-size:.75rem;color:var(--muted);margin-right:4px">Opciones:</span>
+        ${optionsList || '<span style="font-size:.8rem;color:var(--muted)">Sin opciones</span>'}
+        <button class="btn-mini" style="margin-left:6px" onclick="abrirModifierOption(${g.id})">+ Opción</button>
+      </div>
+    `;
     cont.appendChild(div);
   });
 }
-function abrirAdicional(id = null) {
-  editandoAdicId = id;
-  let nombre = '', precio = '', productoId = '', categoriaId = '', activo = true, orden = 0;
+function abrirModifierGroup(id = null) {
+  editandoGroupId = id;
+  let nombre = '', selectionType = 'multiple', required = false, minSel = 0, maxSel = 99, productoId = '', categoriaId = '', activo = true, orden = 0;
   if (id) {
-    const a = adicionales.find(x => x.id === id);
-    if (!a) return;
-    nombre = a.nombre; precio = a.precio; productoId = a.producto_id || '';
-    categoriaId = a.categoria_id || ''; activo = !!a.activo; orden = a.orden;
+    const g = modifierGroups.find(x => x.id === id);
+    if (!g) return;
+    nombre = g.nombre; selectionType = g.selection_type || 'multiple'; required = !!g.required;
+    minSel = g.min_seleccion || 0; maxSel = g.max_seleccion || 99;
+    productoId = g.producto_id || ''; categoriaId = g.categoria_id || '';
+    activo = !!g.activo; orden = g.orden || 0;
   }
   const opcionesProducto = categorias.map(c => {
     const prods = productos.filter(p => p.categoria_id === c.id);
@@ -514,45 +530,98 @@ function abrirAdicional(id = null) {
   }).join('');
   const opcionesCategoria = categorias.map(c => `<option value="${c.id}" ${categoriaId == c.id ? 'selected' : ''}>${escapeHtml(c.nombre)}</option>`).join('');
 
-  // Usar el modal existente del producto, reutilizándolo para adicionales
-  $('modal-title').textContent = id ? 'Editar adicional' : 'Nuevo adicional';
+  $('modal-title').textContent = id ? 'Editar grupo' : 'Nuevo grupo de modificadores';
   $('modal-producto').innerHTML = `
-    <h3 id="modal-title">${id ? 'Editar adicional' : 'Nuevo adicional'}</h3>
-    <div class="field"><label>Nombre del adicional *</label><input type="text" id="ad-nombre" value="${escapeHtml(nombre)}"></div>
-    <div class="field"><label>Precio extra ($)</label><input type="number" id="ad-precio" value="${precio}" step="100" min="0"></div>
-    <div class="field"><label>Asociar a producto (opcional)</label><select id="ad-producto"><option value="">— Ninguno —</option>${opcionesProducto}</select></div>
-    <div class="field"><label>Asociar a categoría (opcional)</label><select id="ad-categoria"><option value="">— Ninguna —</option>${opcionesCategoria}</select></div>
-    <div class="field"><label>Orden</label><input type="number" id="ad-orden" value="${orden}" min="0"></div>
-    <div class="field"><label><input type="checkbox" id="ad-activo" ${activo ? 'checked' : ''}> Activo (visible en el menú)</label></div>
+    <h3 id="modal-title">${id ? 'Editar grupo' : 'Nuevo grupo de modificadores'}</h3>
+    <div class="field"><label>Nombre del grupo *</label><input type="text" id="mg-nombre" value="${escapeHtml(nombre)}"></div>
+    <div class="field"><label>Tipo de selección</label><select id="mg-seltype"><option value="multiple" ${selectionType === 'multiple' ? 'selected' : ''}>Múltiple (checkbox)</option><option value="single" ${selectionType === 'single' ? 'selected' : ''}>Única (radio)</option></select></div>
+    <div class="field"><label><input type="checkbox" id="mg-required" ${required ? 'checked' : ''}> Obligatorio</label></div>
+    <div class="field"><label>Mínimo selecciones</label><input type="number" id="mg-min" value="${minSel}" min="0"></div>
+    <div class="field"><label>Máximo selecciones</label><input type="number" id="mg-max" value="${maxSel}" min="1"></div>
+    <div class="field"><label>Asociar a producto</label><select id="mg-producto"><option value="">— Ninguno —</option>${opcionesProducto}</select></div>
+    <div class="field"><label>Asociar a categoría</label><select id="mg-categoria"><option value="">— Ninguna —</option>${opcionesCategoria}</select></div>
+    <div class="field"><label>Orden</label><input type="number" id="mg-orden" value="${orden}" min="0"></div>
+    <div class="field"><label><input type="checkbox" id="mg-activo" ${activo ? 'checked' : ''}> Activo (visible en el menú)</label></div>
     <div class="actions">
       <button class="btn-ghost" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-primary" onclick="guardarAdicional()">Guardar</button>
+      <button class="btn-primary" onclick="guardarModifierGroup()">Guardar</button>
     </div>
   `;
   $('overlay').classList.add('open');
 }
-function editarAdicional(id) { abrirAdicional(id); }
-async function guardarAdicional() {
-  const nombre = $('ad-nombre').value.trim();
+function editarModifierGroup(id) { abrirModifierGroup(id); }
+async function guardarModifierGroup() {
+  const nombre = $('mg-nombre').value.trim();
   if (!nombre) { toast('El nombre es obligatorio', true); return; }
   const body = {
     nombre,
-    precio: parseFloat($('ad-precio').value) || 0,
-    producto_id: $('ad-producto').value ? parseInt($('ad-producto').value, 10) : null,
-    categoria_id: $('ad-categoria').value ? parseInt($('ad-categoria').value, 10) : null,
-    orden: parseInt($('ad-orden').value, 10) || 0,
-    activo: $('ad-activo').checked ? 1 : 0,
+    selection_type: $('mg-seltype').value,
+    required: $('mg-required').checked,
+    min_seleccion: parseInt($('mg-min').value, 10) || 0,
+    max_seleccion: parseInt($('mg-max').value, 10) || 99,
+    producto_id: $('mg-producto').value ? parseInt($('mg-producto').value, 10) : null,
+    categoria_id: $('mg-categoria').value ? parseInt($('mg-categoria').value, 10) : null,
+    orden: parseInt($('mg-orden').value, 10) || 0,
+    activo: $('mg-activo').checked ? 1 : 0,
   };
   try {
-    if (editandoAdicId) await api('/api/admin/adicionales/' + editandoAdicId, 'PUT', body);
-    else await api('/api/admin/adicionales', 'POST', body);
-    toast('Adicional guardado ✓');
+    if (editandoGroupId) await api('/api/admin/modifier-groups/' + editandoGroupId, 'PUT', body);
+    else await api('/api/admin/modifier-groups', 'POST', body);
+    toast('Grupo guardado ✓');
     cerrarModal(); cargarTodo();
   } catch (e) { toast(e.message, true); }
 }
-async function eliminarAdicional(id) {
-  if (!confirm('¿Eliminar este adicional?')) return;
-  try { await api('/api/admin/adicionales/' + id, 'DELETE'); toast('Adicional eliminado'); cargarTodo(); }
+async function eliminarModifierGroup(id) {
+  if (!confirm('¿Eliminar este grupo y TODAS sus opciones?')) return;
+  try { await api('/api/admin/modifier-groups/' + id, 'DELETE'); toast('Grupo eliminado'); cargarTodo(); }
+  catch (e) { toast(e.message, true); }
+}
+
+// ---------- Modifier Options ----------
+function abrirModifierOption(groupId, optionId = null) {
+  editandoOptionId = optionId;
+  let nombre = '', priceDelta = 0, activo = true, orden = 0;
+  if (optionId) {
+    const g = modifierGroups.find(x => x.id === groupId);
+    if (!g || !Array.isArray(g.options)) return;
+    const opt = g.options.find(o => o.id === optionId);
+    if (!opt) return;
+    nombre = opt.nombre; priceDelta = opt.price_delta || 0; activo = !!opt.activo; orden = opt.orden || 0;
+  }
+  $('modal-title').textContent = optionId ? 'Editar opción' : 'Nueva opción';
+  $('modal-producto').innerHTML = `
+    <h3 id="modal-title">${optionId ? 'Editar opción' : 'Nueva opción'}</h3>
+    <div class="field"><label>Nombre *</label><input type="text" id="mo-nombre" value="${escapeHtml(nombre)}"></div>
+    <div class="field"><label>Precio extra ($)</label><input type="number" id="mo-price" value="${priceDelta}" step="100" min="0"></div>
+    <div class="field"><label>Orden</label><input type="number" id="mo-orden" value="${orden}" min="0"></div>
+    <div class="field"><label><input type="checkbox" id="mo-activo" ${activo ? 'checked' : ''}> Activo</label></div>
+    <div class="actions">
+      <button class="btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-primary" onclick="guardarModifierOption(${groupId})">Guardar</button>
+    </div>
+  `;
+  $('overlay').classList.add('open');
+}
+async function guardarModifierOption(groupId) {
+  const nombre = $('mo-nombre').value.trim();
+  if (!nombre) { toast('El nombre es obligatorio', true); return; }
+  const body = {
+    group_id: groupId,
+    nombre,
+    price_delta: parseFloat($('mo-price').value) || 0,
+    orden: parseInt($('mo-orden').value, 10) || 0,
+    activo: $('mo-activo').checked ? 1 : 0,
+  };
+  try {
+    if (editandoOptionId) await api('/api/admin/modifier-options/' + editandoOptionId, 'PUT', body);
+    else await api('/api/admin/modifier-options', 'POST', body);
+    toast('Opción guardada ✓');
+    cerrarModal(); cargarTodo();
+  } catch (e) { toast(e.message, true); }
+}
+async function eliminarModifierOption(groupId, optionId) {
+  if (!confirm('¿Eliminar esta opción?')) return;
+  try { await api('/api/admin/modifier-options/' + optionId, 'DELETE'); toast('Opción eliminada'); cargarTodo(); }
   catch (e) { toast(e.message, true); }
 }
 
