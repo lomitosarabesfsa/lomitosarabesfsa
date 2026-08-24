@@ -7,10 +7,14 @@
 // ============================================================
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
+const NO_CACHE = { 'Cache-Control': 'no-store, no-cache, must-revalidate' };
 
 // ---------- Utilidades ----------
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
+}
+function jsonNoCache(body, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...JSON_HEADERS, ...NO_CACHE } });
 }
 
 function jsonError(message, status = 400) {
@@ -43,6 +47,11 @@ function corsHeaders(request) {
 function applyCors(response, request) {
   const r = new Response(response.body, response);
   Object.entries(corsHeaders(request)).forEach(([k, v]) => r.headers.set(k, v));
+  // Evitar cache en responses de admin ( datos siempre frescos en el panel)
+  const url = new URL(request.url);
+  if (url.pathname.startsWith('/api/admin')) {
+    r.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  }
   return r;
 }
 
