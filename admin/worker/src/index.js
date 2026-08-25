@@ -306,9 +306,12 @@ async function requireAuth(request, envLocal) {
   const token = obtenerToken(request);
   if (!token) return null;
   // Check if token has been revoked (logout server-side)
-  const tokenHash = await hmacHex(authSecret(envLocal), token);
-  const revoked = await envLocal.DB.prepare('SELECT 1 FROM revoked_tokens WHERE token_hash = ?').bind(tokenHash).first();
-  if (revoked) return null;
+  // Resilient: if revoked_tokens table doesn't exist yet, skip the check
+  try {
+    const tokenHash = await hmacHex(authSecret(envLocal), token);
+    const revoked = await envLocal.DB.prepare('SELECT 1 FROM revoked_tokens WHERE token_hash = ?').bind(tokenHash).first();
+    if (revoked) return null;
+  } catch {}
   return await verificarToken(token, authSecret(envLocal));
 }
 
