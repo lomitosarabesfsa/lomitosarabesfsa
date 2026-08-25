@@ -2,6 +2,7 @@
 //  LOMITOS ÁRABES FSA — API (Cloudflare Worker)
 //  · GET  /api/menu              → menú público
 //  · POST /api/login             → autenticación
+//  · POST /api/logout            → revocar token (logout)
 //  · CRUD /api/admin/*           → protegido con token Bearer
 //  · POST /api/admin/imagen      → sube imagen a R2
 // ============================================================
@@ -84,6 +85,21 @@ async function recordRateLimitHit(envLocal, ip, action) {
   const key = `${action}:${ip}`;
   try {
     await envLocal.DB.prepare('INSERT INTO rate_limits (key, timestamp) VALUES (?, ?)').bind(key, Date.now()).run();
+  } catch {}
+}
+
+// Limpieza periódica de rate_limits (una vez por hora)
+async function cleanupRateLimits(envLocal) {
+  try {
+    const lastRow = await envLocal.DB.prepare("SELECT valor FROM config WHERE clave = 'rate_limits_last_cleanup'").first();
+    const lastCleanup = lastRow ? parseInt(lastRow.valor, 10) : 0;
+    const now = Date.now();
+    if (now - lastCleanup < 3600000) return; // 1 hora
+    // Eliminar registros de más de 24 horas
+    const cutoff = now - 86400000;
+    await envLocal.DB.prepare('DELETE FROM rate_limits WHERE timestamp < ?').bind(cutoff).run();
+    // Actualizar timestamp de última limpieza
+    await envLocal.DB.prepare("INSERT INTO config (clave, valor) VALUES ('rate_limits_last_cleanup', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor").bind(String(now)).run();
   } catch {}
 }
 
@@ -288,7 +304,22 @@ async function login(request, envLocal) {
 
 async function requireAuth(request, envLocal) {
   const token = obtenerToken(request);
+  if (!token) return null;
+  // Check if token has been revoked (logout server-side)
+  const tokenHash = await hmacHex(authSecret(envLocal), token);
+  const revoked = await envLocal.DB.prepare('SELECT 1 FROM revoked_tokens WHERE token_hash = ?').bind(tokenHash).first();
+  if (revoked) return null;
   return await verificarToken(token, authSecret(envLocal));
+}
+
+async function revokeToken(request, envLocal) {
+  const token = obtenerToken(request);
+  if (!token) return jsonError('No hay token', 400);
+  const tokenHash = await hmacHex(authSecret(envLocal), token);
+  try {
+    await envLocal.DB.prepare('INSERT OR IGNORE INTO revoked_tokens (token_hash, revoked_at) VALUES (?, ?)').bind(tokenHash, Date.now()).run();
+  } catch {}
+  return json({ ok: true });
 }
 
 // ============================================================
@@ -483,6 +514,8 @@ export default {
         return applyCors(json(await getMenu(envLocal)), request);
       }
       if (request.method === 'POST' && path === '/api/login') {
+        // Limpieza periódica de rate_limits (una vez por hora)
+        await cleanupRateLimits(envLocal);
         // IMP-7: Rate limiting con D1 (funciona en producción)
         const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
         const allowed = await checkRateLimit(envLocal, ip, 'login', 5, 60000);
@@ -498,6 +531,11 @@ export default {
       const user = await requireAuth(request, envLocal);
       if (path.startsWith('/api/admin') && !user) {
         return applyCors(jsonError('No autorizado', 401), request);
+      }
+
+      // Logout (requiere token válido para revocarlo)
+      if (request.method === 'POST' && path === '/api/logout') {
+        return applyCors(await revokeToken(request, envLocal), request);
       }
 
       // Productos

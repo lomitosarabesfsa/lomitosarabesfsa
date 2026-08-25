@@ -38,8 +38,6 @@
         let metodoEntrega = "Envío a domicilio";
 
 
-        // NICE-9: escapeHtml importado de utils.js (shared code)
-        // Si utils.js no carga (offline/CORS), fallback inline
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
             return String(str).replace(/[&<>"']/g, (c) => ({

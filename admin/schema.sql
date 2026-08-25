@@ -89,6 +89,15 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 CREATE INDEX IF NOT EXISTS idx_rate_limits_key_ts ON rate_limits(key, timestamp);
 
 -- ============================================================
+-- TOKENS REVOCADOS (logout server-side)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+  token_hash TEXT PRIMARY KEY,
+  revoked_at INTEGER NOT NULL
+);
+
+-- ============================================================
 -- ÍNDICES
 -- ============================================================
 

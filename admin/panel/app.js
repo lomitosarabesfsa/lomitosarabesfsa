@@ -66,7 +66,12 @@ async function doLogin() {
   } catch (e) { $('login-error').textContent = e.message; $('login-error').style.display = 'block'; }
   finally { btn.disabled = false; btn.textContent = 'Ingresar'; }
 }
-function logout() { token = ''; localStorage.removeItem('lomitos_admin_token'); location.reload(); }
+async function logout() {
+  try { await api('/api/logout', 'POST'); } catch {}
+  token = '';
+  localStorage.removeItem('lomitos_admin_token');
+  location.reload();
+}
 async function mostrarApp() {
   $('login').style.display = 'none'; $('app').style.display = 'block';
   $('user-label').textContent = 'Admin'; await cargarTodo();

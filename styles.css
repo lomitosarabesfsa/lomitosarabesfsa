@@ -497,6 +497,26 @@
             opacity: 0.8;
         }
 
+        /* CTA variante pequeño (sección contacto) */
+        .cta-btn-sm {
+            padding: 12px 30px;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        /* Título del bloque SEO */
+        .seo-title {
+            color: var(--text);
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        /* Título del formulario de checkout */
+        .checkout-title {
+            color: var(--primary);
+            margin: 10px 0 5px;
+        }
+
         /* ============================================
            PROMO BANNER
            ============================================ */
@@ -1654,6 +1674,10 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
+        }
+
+        .form-row-mt {
+            margin-top: 15px;
         }
 
         .back-to-cart {

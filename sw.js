@@ -1,10 +1,10 @@
-const CACHE_NAME = 'lomitos-fsa-v17';
+const CACHE_NAME = 'lomitos-fsa-v18';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/styles.css',
   '/app.js',
-  '/utils.js',
+
   '/assets/logoheader.jpeg',
   '/assets/background.jpeg',
   '/assets/ilustrativo.jpeg',
@@ -44,6 +44,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
+    return;
+  }
+
+  // Never cache API requests — always go to network so admin
+  // changes are reflected immediately on the landing page.
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(event.request));
     return;
   }
 
