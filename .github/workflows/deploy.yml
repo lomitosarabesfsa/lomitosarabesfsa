@@ -1,0 +1,65 @@
+# ============================================================
+#  Deploy: Cloudflare Worker
+#  Se ejecuta al push en main. Primero corre los tests, y si
+#  pasan, deployea el worker a Cloudflare.
+# ============================================================
+
+name: Deploy Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "admin/worker/**"
+      - "admin/schema.sql"
+      - "admin/wrangler.toml"
+      - ".github/workflows/deploy.yml"
+
+  workflow_dispatch: # Permitir deploy manual desde GitHub
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - run: npm ci
+
+      - name: Unit tests
+        run: npx vitest run worker/test/index.test.js
+
+  deploy:
+    name: Deploy to Cloudflare
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - run: npm ci
+
+      - name: Deploy worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: admin
+          command: deploy
