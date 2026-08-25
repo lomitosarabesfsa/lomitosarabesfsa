@@ -4,148 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel — Lomitos Árabes FSA</title>
-<style>
-  :root {
-    --primary: #F57C00; --secondary: #D84315; --bg: #121212; --surface: #1E1E1E;
-    --surface2: #2a2a2a; --text: #FFFFFF; --muted: #B0BEC5; --success: #22c55e; --danger: #ef4444;
-    --radius: 16px; --sidebar-w: 220px;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  <link rel="stylesheet" href="styles.css">
 
-  /* ===== SIDEBAR ===== */
-  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w); background: var(--surface); border-right: 1px solid rgba(255,255,255,.06); display: flex; flex-direction: column; z-index: 50; }
-  .sidebar-header { padding: 20px 18px; border-bottom: 1px solid rgba(255,255,255,.06); }
-  .sidebar-header h1 { font-size: 1rem; color: var(--primary); margin-bottom: 4px; }
-  .sidebar-header .user { color: var(--muted); font-size: .75rem; }
-  .sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 0; }
-  .sidebar-nav button { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; color: var(--muted); padding: 11px 18px; font-size: .88rem; text-align: left; border-radius: 0; transition: all .15s; cursor: pointer; font-weight: 500; }
-  .sidebar-nav button:hover { background: rgba(255,255,255,.04); color: var(--text); }
-  .sidebar-nav button.active { background: rgba(245,124,0,.12); color: var(--primary); font-weight: 700; border-right: 3px solid var(--primary); }
-  .sidebar-nav button .icon { font-size: 1.1rem; width: 24px; text-align: center; }
-  .sidebar-footer { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.06); }
-  .sidebar-footer button { background: var(--surface2); color: var(--muted); width: 100%; padding: 9px; font-size: .82rem; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; }
-  .sidebar-footer button:hover { color: var(--text); }
-
-  /* ===== MAIN ===== */
-  .main-content { margin-left: var(--sidebar-w); padding: 24px 5% 80px; max-width: 960px; }
-  .tab { display: none; } .tab.active { display: block; }
-
-  /* ===== COMPONENTS ===== */
-  button { cursor: pointer; border: none; border-radius: 10px; font-weight: 600; transition: all .2s; }
-  .btn-primary { background: var(--primary); color: #000; padding: 10px 20px; }
-  .btn-primary:hover { transform: translateY(-1px); }
-  .btn-primary:disabled { opacity: .5; cursor: wait; transform: none; }
-  .btn-ghost { background: var(--surface2); color: var(--text); padding: 8px 14px; font-size: .85rem; }
-  .btn-danger { background: rgba(239,68,68,.15); color: var(--danger); padding: 8px 14px; font-size: .85rem; }
-  .btn-mini { background: var(--surface2); color: var(--text); padding: 6px 12px; font-size: .8rem; }
-  .btn-mini.danger { background: rgba(239,68,68,.15); color: var(--danger); }
-  .btn-mini:disabled { opacity: .5; cursor: wait; }
-  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-  .field label { font-size: .8rem; color: var(--muted); text-transform: uppercase; font-weight: 600; }
-  .field input, .field select, .field textarea { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 12px; color: var(--text); font-size: 1rem; font-family: inherit; }
-  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); outline: none; }
-  .field-row { display: flex; gap: 12px; }
-  .field-row .field { flex: 1; }
-  .card { background: var(--surface); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 14px; }
-  .card img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; background: var(--surface2); }
-  .card .info { flex: 1; min-width: 0; }
-  .card .info h3 { font-size: 1rem; }
-  .card .info .meta { color: var(--muted); font-size: .8rem; margin-top: 3px; }
-  .card .info .price { color: var(--primary); font-weight: 700; }
-  .card .actions { display: flex; gap: 8px; flex-shrink: 0; }
-  .badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 6px; }
-  .badge.ok { background: rgba(34,197,94,.15); color: var(--success); }
-  .badge.warn { background: rgba(245,158,11,.15); color: #f59e0b; }
-  .badge.err { background: rgba(239,68,68,.15); color: var(--danger); }
-  .badge.off { background: rgba(255,255,255,.06); color: var(--muted); }
-  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
-  .toolbar h2 { font-size: 1.3rem; color: var(--primary); }
-  .empty { color: var(--muted); text-align: center; padding: 40px 0; }
-  .search-bar { width: 100%; max-width: 320px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 10px 14px; color: var(--text); font-size: .9rem; font-family: inherit; }
-  .search-bar:focus { border-color: var(--primary); outline: none; }
-
-  /* Per-endpoint errors */
-  .section-error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; color: var(--danger); font-size: .85rem; }
-  .section-error strong { display: block; margin-bottom: 4px; }
-
-  /* Modal */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
-  .overlay.open { display: flex; }
-  .modal { background: var(--surface); border-radius: var(--radius); max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; }
-  .modal h3 { color: var(--primary); margin-bottom: 16px; }
-  .modal .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.06); }
-  #img-preview { width: 80px; height: 80px; object-fit: cover; border-radius: 10px; display: none; margin-top: 8px; background: var(--surface2); }
-
-  /* Toast */
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--success); color: #fff; padding: 12px 22px; border-radius: 12px; font-weight: 600; z-index: 200; opacity: 0; transition: opacity .3s; pointer-events: none; }
-  .toast.show { opacity: 1; }
-  .toast.error { background: var(--danger); }
-
-  /* Horarios */
-  .horario-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; align-items: center; background: var(--surface); padding: 12px; border-radius: 12px; margin-bottom: 8px; }
-  .horario-row input { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 10px; color: var(--text); font-family: inherit; }
-  .horario-row .dia { font-weight: 600; }
-  .cerrado-chk { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--muted); }
-
-  /* Galería */
-  .galeria-grid { display: flex; flex-wrap: wrap; gap: 10px; }
-  .galeria-item { position: relative; display: inline-block; }
-  .galeria-item img { width: 100px; height: 100px; object-fit: cover; border-radius: 12px; }
-  .galeria-item .rm { position: absolute; top: -8px; right: -8px; background: var(--danger); color: #fff; border-radius: 50%; width: 24px; height: 24px; font-size: .8rem; border: none; cursor: pointer; }
-
-  /* Modifier Group Card */
-  .mg-card { background: var(--surface); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
-  .mg-card-header { display: flex; align-items: center; padding: 16px 18px; gap: 12px; }
-  .mg-card-header .info { flex: 1; min-width: 0; }
-  .mg-card-header .info h3 { font-size: 1rem; }
-  .mg-card-header .info .meta { color: var(--muted); font-size: .8rem; margin-top: 2px; }
-  .mg-card-options { border-top: 1px solid rgba(255,255,255,.06); }
-  .mg-opt-row { display: flex; align-items: center; padding: 10px 18px; gap: 10px; border-bottom: 1px solid rgba(255,255,255,.03); transition: background .15s; }
-  .mg-opt-row:last-child { border-bottom: none; }
-  .mg-opt-row:hover { background: rgba(255,255,255,.02); }
-  .mg-opt-row .opt-name { flex: 1; font-size: .9rem; }
-  .mg-opt-row .opt-price { font-size: .85rem; font-weight: 700; color: var(--primary); white-space: nowrap; }
-  .mg-opt-row .opt-actions { display: flex; gap: 4px; }
-  .mg-opt-add { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; color: var(--muted); font-size: .85rem; cursor: pointer; border-top: 1px solid rgba(255,255,255,.06); transition: all .15s; }
-  .mg-opt-add:hover { color: var(--primary); background: rgba(245,124,0,.05); }
-  .mg-opt-edit { display: flex; align-items: center; gap: 8px; flex: 1; }
-  .mg-opt-edit input { background: rgba(255,255,255,.05); border: 1px solid rgba(245,124,0,.3); border-radius: 8px; padding: 6px 10px; color: var(--text); font-size: .88rem; font-family: inherit; }
-  .mg-opt-edit input:focus { border-color: var(--primary); outline: none; }
-  .mg-opt-edit input[name="opt-name"] { flex: 1; }
-  .mg-opt-edit input[name="opt-price"] { width: 90px; }
-
-  /* Login */
-  #login { max-width: 380px; margin: 12vh auto; background: var(--surface); padding: 36px; border-radius: var(--radius); }
-  #login h2 { color: var(--primary); margin-bottom: 20px; text-align: center; }
-  #login button { width: 100%; }
-  .error-msg { color: var(--danger); font-size: .85rem; margin-bottom: 10px; display: none; }
-
-  /* Mobile */
-  @media (max-width: 768px) {
-    .sidebar { width: 100%; height: auto; bottom: 0; top: auto; flex-direction: row; border-right: none; border-top: 1px solid rgba(255,255,255,.06); background: var(--surface); }
-    .sidebar-header, .sidebar-footer { display: none; }
-    .sidebar-nav { display: grid; grid-template-columns: repeat(7, 1fr); padding: 6px 4px; gap: 2px; width: 100%; }
-    .sidebar-nav button { flex-direction: column; gap: 2px; padding: 8px 2px; font-size: .65rem; text-align: center; border-radius: 8px; min-width: 0; overflow: hidden; }
-    .sidebar-nav button .icon { font-size: 1rem; }
-    .sidebar-nav button.active { border-right: none; border-top: none; background: rgba(245,124,0,.15); }
-    .main-content { margin-left: 0; margin-bottom: 72px; padding: 16px 4% 20px; }
-    .card { flex-wrap: wrap; }
-    .card .actions { width: 100%; }
-    .card .actions button { flex: 1; }
-    .mg-card-header { flex-wrap: wrap; }
-    .mg-card-header .actions { width: 100%; margin-top: 8px; }
-    .mg-opt-row { padding: 8px 12px; }
-    .mg-opt-edit { flex-wrap: wrap; }
-    .mg-opt-edit input[name="opt-price"] { width: 70px; }
-    .horario-row { grid-template-columns: 1fr 1fr; }
-    .horario-row .dia { grid-column: 1 / -1; }
-    .field-row { flex-direction: column; gap: 0; }
-    .toolbar { flex-direction: column; align-items: stretch; }
-    .search-bar { max-width: 100%; }
-  }
-</style>
-</head>
 <body>
 
 <!-- ================= LOGIN ================= -->
@@ -154,7 +14,7 @@
   <p class="error-msg" id="login-error"></p>
   <div class="field"><label>Usuario</label><input type="text" id="login-user" autocomplete="username"></div>
   <div class="field"><label>Clave</label><input type="password" id="login-pass" autocomplete="current-password"></div>
-  <button class="btn-primary" id="login-btn" onclick="doLogin()">Ingresar</button>
+  <button class="btn-primary" id="login-btn" data-action="do-login">Ingresar</button>
 </div>
 
 <!-- ================= APP ================= -->
@@ -165,15 +25,15 @@
       <span class="user" id="user-label"></span>
     </div>
     <nav class="sidebar-nav" id="sidebar-nav">
-      <button class="active" data-tab="productos" onclick="showTab('productos')"><span class="icon">🍔</span> Productos</button>
-      <button data-tab="categorias" onclick="showTab('categorias')"><span class="icon">🗂️</span> Categorías</button>
-      <button data-tab="modifiers" onclick="showTab('modifiers')"><span class="icon">➕</span> Modifiers</button>
-      <button data-tab="promos" onclick="showTab('promos')"><span class="icon">🔥</span> Promos</button>
-      <button data-tab="horarios" onclick="showTab('horarios')"><span class="icon">🕒</span> Horarios</button>
-      <button data-tab="galeria" onclick="showTab('galeria')"><span class="icon">📸</span> Galería</button>
-      <button data-tab="config" onclick="showTab('config')"><span class="icon">⚙️</span> Config</button>
+      <button class="active" data-tab="productos" data-action="show-tab" data-tab="productos"><span class="icon">🍔</span> Productos</button>
+      <button data-tab="categorias" data-action="show-tab" data-tab="categorias"><span class="icon">🗂️</span> Categorías</button>
+      <button data-tab="modifiers" data-action="show-tab" data-tab="modifiers"><span class="icon">➕</span> Modifiers</button>
+      <button data-tab="promos" data-action="show-tab" data-tab="promos"><span class="icon">🔥</span> Promos</button>
+      <button data-tab="horarios" data-action="show-tab" data-tab="horarios"><span class="icon">🕒</span> Horarios</button>
+      <button data-tab="galeria" data-action="show-tab" data-tab="galeria"><span class="icon">📸</span> Galería</button>
+      <button data-tab="config" data-action="show-tab" data-tab="config"><span class="icon">⚙️</span> Config</button>
     </nav>
-    <div class="sidebar-footer"><button onclick="logout()">Salir</button></div>
+    <div class="sidebar-footer"><button data-action="logout">Salir</button></div>
   </aside>
 
   <div class="main-content">
@@ -182,7 +42,7 @@
         <h2>Productos</h2>
         <div style="display:flex;gap:10px;align-items:center">
           <input class="search-bar" type="text" placeholder="🔍 Buscar producto..." id="search-productos" oninput="renderProductos()">
-          <button class="btn-primary" onclick="abrirProducto()">+ Nuevo</button>
+          <button class="btn-primary" data-action="abrir-producto">+ Nuevo</button>
         </div>
       </div>
       <div id="err-productos"></div>
@@ -190,43 +50,43 @@
     </div>
 
     <div class="tab" id="tab-categorias">
-      <div class="toolbar"><h2>Categorías</h2><button class="btn-primary" onclick="abrirCategoria()">+ Nueva</button></div>
+      <div class="toolbar"><h2>Categorías</h2><button class="btn-primary" data-action="abrir-categoria">+ Nueva</button></div>
       <div id="err-categorias"></div>
       <div id="lista-categorias"></div>
     </div>
 
     <div class="tab" id="tab-modifiers">
-      <div class="toolbar"><h2>Modifier Groups</h2><button class="btn-primary" onclick="abrirModifierGroup()">+ Nuevo grupo</button></div>
+      <div class="toolbar"><h2>Modifier Groups</h2><button class="btn-primary" data-action="abrir-modifier-group">+ Nuevo grupo</button></div>
       <p style="color:var(--muted);font-size:.85rem;margin-bottom:16px">Grupos de opciones que el comensal elige al agregar un producto. Asociá cada grupo a un <strong>producto</strong> o a una <strong>categoría</strong>.</p>
       <div id="err-modifiers"></div>
       <div id="lista-modifiers"></div>
     </div>
 
     <div class="tab" id="tab-promos">
-      <div class="toolbar"><h2>Promos (banner)</h2><button class="btn-primary" onclick="agregarPromo()">+ Agregar</button></div>
+      <div class="toolbar"><h2>Promos (banner)</h2><button class="btn-primary" data-action="agregar-promo">+ Agregar</button></div>
       <div id="err-promos"></div>
       <div id="lista-promos"></div>
-      <div style="margin-top:16px"><button class="btn-primary" id="btn-guardar-promos" onclick="guardarPromos()">💾 Guardar promos</button></div>
+      <div style="margin-top:16px"><button class="btn-primary" id="btn-guardar-promos" data-action="guardar-promos">💾 Guardar promos</button></div>
     </div>
 
     <div class="tab" id="tab-horarios">
-      <div class="toolbar"><h2>Horarios</h2><button class="btn-primary" id="btn-guardar-horarios" onclick="guardarHorarios()">💾 Guardar horarios</button></div>
+      <div class="toolbar"><h2>Horarios</h2><button class="btn-primary" id="btn-guardar-horarios" data-action="guardar-horarios">💾 Guardar horarios</button></div>
       <div id="lista-horarios"></div>
       <p style="color:var(--muted);font-size:.8rem;margin-top:12px">Dejá el horario vacío si ese día está cerrado.</p>
     </div>
 
     <div class="tab" id="tab-galeria">
-      <div class="toolbar"><h2>Galería</h2><button class="btn-primary" onclick="document.getElementById('file-galeria').click()">+ Subir foto</button></div>
+      <div class="toolbar"><h2>Galería</h2><button class="btn-primary" data-action="upload-galeria">+ Subir foto</button></div>
       <input type="file" id="file-galeria" accept="image/*" multiple style="display:none" onchange="subirGaleria(this.files)">
       <div id="err-galeria"></div>
       <div id="lista-galeria"></div>
-      <div style="margin-top:16px"><button class="btn-primary" id="btn-guardar-galeria" onclick="guardarGaleria()">💾 Guardar galería</button></div>
+      <div style="margin-top:16px"><button class="btn-primary" id="btn-guardar-galeria" data-action="guardar-galeria">💾 Guardar galería</button></div>
     </div>
 
     <div class="tab" id="tab-config">
       <div class="toolbar"><h2>Configuración</h2></div>
       <div class="field"><label>Número de WhatsApp (sin +)</label><input type="text" id="config-whatsapp"></div>
-      <button class="btn-primary" id="btn-guardar-config" onclick="guardarConfig()">💾 Guardar</button>
+      <button class="btn-primary" id="btn-guardar-config" data-action="guardar-config">💾 Guardar</button>
     </div>
   </div>
 </div>
@@ -237,529 +97,8 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script>
-const API_BASE = location.hostname === 'localhost' ? 'http://localhost:8787' : 'https://lomitos-api.gapersingula97.workers.dev';
-let token = localStorage.getItem('lomitos_admin_token') || '';
-let productos = [], categorias = [], promos = [], horarios = {}, galeria = [], modifierGroups = [];
-let editandoId = null, editandoGroupId = null, editandoOptionId = null, urlSubida = '';
 
-// ============================================================
-//  UTILIDADES
-// ============================================================
-function $(id) { return document.getElementById(id); }
-function toast(msg, error = false) {
-  const t = $('toast'); t.textContent = msg;
-  t.className = 'toast show' + (error ? ' error' : '');
-  setTimeout(() => t.className = 'toast', 2500);
-}
-function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
-}
-
-// ============================================================
-//  API con manejo de errores por endpoint + token expirado
-// ============================================================
-async function api(path, method = 'GET', body = null) {
-  const opts = { method, headers: {}, cache: 'no-store' };
-  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
-  if (body !== null) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-  const res = await fetch(API_BASE + path, opts);
-  // Token expirado o inválido → forzar re-login
-  if (res.status === 401) { logout(); throw new Error('Sesión expirada'); }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
-  return data;
-}
-
-function showSectionError(sectionId, msg) {
-  const el = $('err-' + sectionId);
-  if (el) el.innerHTML = `<div class="section-error"><strong>Error cargando ${sectionId}</strong>${escapeHtml(msg)}</div>`;
-}
-function clearSectionError(sectionId) {
-  const el = $('err-' + sectionId);
-  if (el) el.innerHTML = '';
-}
-
-// Loading state: desactivar botón mientras se procesa
-async function withLoading(btnId, fn) {
-  const btn = $(btnId);
-  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
-  try { await fn(); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = btn.dataset.original || btn.textContent.replace('Guardando...',''); } }
-}
-
-// ============================================================
-//  LOGIN
-// ============================================================
-function init() { if (token) mostrarApp(); else $('login').style.display = 'block'; }
-async function doLogin() {
-  $('login-error').style.display = 'none';
-  const btn = $('login-btn'); btn.disabled = true; btn.textContent = 'Ingresando...';
-  try {
-    const r = await fetch(API_BASE + '/api/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usuario: $('login-user').value, clave: $('login-pass').value }),
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || 'Error');
-    token = data.token; localStorage.setItem('lomitos_admin_token', token); mostrarApp();
-  } catch (e) { $('login-error').textContent = e.message; $('login-error').style.display = 'block'; }
-  finally { btn.disabled = false; btn.textContent = 'Ingresar'; }
-}
-function logout() { token = ''; localStorage.removeItem('lomitos_admin_token'); location.reload(); }
-async function mostrarApp() {
-  $('login').style.display = 'none'; $('app').style.display = 'block';
-  $('user-label').textContent = 'Admin'; await cargarTodo();
-}
-
-// ============================================================
-//  TABS
-// ============================================================
-function showTab(nombre) {
-  document.querySelectorAll('.sidebar-nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === nombre));
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + nombre));
-}
-
-// ============================================================
-//  CARGAR DATOS — con errores por endpoint
-// ============================================================
-async function cargarTodo() {
-  const endpoints = [
-    { key: 'productos',    path: '/api/admin/productos',        var: v => productos = v },
-    { key: 'categorias',   path: '/api/admin/categorias',       var: v => categorias = v },
-    { key: 'promos',       path: '/api/admin/promos',           var: v => promos = v },
-    { key: 'config',       path: '/api/admin/config',           var: v => { horarios = v.horarios || {}; galeria = v.galeria || []; $('config-whatsapp').value = v.whatsapp || ''; } },
-    { key: 'modifiers',    path: '/api/admin/modifier-groups',  var: v => modifierGroups = v },
-  ];
-  for (const ep of endpoints) {
-    try {
-      clearSectionError(ep.key);
-      const data = await api(ep.path);
-      ep.var(data);
-    } catch (e) {
-      if (e.message === 'Sesión expirada') return;
-      showSectionError(ep.key, e.message);
-    }
-  }
-  renderProductos(); renderCategorias(); renderPromos(); renderHorarios(); renderGaleria(); renderModifierGroups();
-}
-
-// ============================================================
-//  PRODUCTOS — con búsqueda + toggle activo + orden
-// ============================================================
-function renderProductos() {
-  const cont = $('lista-productos');
-  const q = ($('search-productos')?.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const filtered = q ? productos.filter(p => p.nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q)) : productos;
-  if (!filtered.length) { cont.innerHTML = `<p class="empty">${q ? 'Sin resultados para "' + escapeHtml(q) + '"' : 'Todavía no hay productos.'}</p>`; return; }
-  cont.innerHTML = '';
-  filtered.forEach(p => {
-    const cat = categorias.find(c => c.id === p.categoria_id);
-    const stock = p.stock;
-    const stockBadge = stock === 0 ? '<span class="badge err">AGOTADO</span>' : stock > 0 && stock <= 5 ? `<span class="badge warn">ÚLTIMAS ${stock}</span>` : stock > 5 ? '<span class="badge ok">OK</span>' : '';
-    const activeBadge = p.activo ? '' : '<span class="badge off">INACTIVO</span>';
-    const div = document.createElement('div'); div.className = 'card';
-    div.innerHTML = `
-      ${p.imagen ? `<img src="${escapeHtml(p.imagen)}" onerror="this.style.display='none'" alt="">` : '<img src="" style="display:none" alt="">'}
-      <div class="info">
-        <h3>${escapeHtml(p.nombre)} ${stockBadge} ${activeBadge}</h3>
-        <div class="meta">${escapeHtml(cat ? cat.nombre : 'Sin cat.')}${p.stock !== -1 ? ' · Stock: ' + p.stock : ''} · Orden: ${p.orden || 0}</div>
-        <div class="price">$${Number(p.precio).toLocaleString('es-AR')}</div>
-      </div>
-      <div class="actions">
-        <button class="btn-mini" onclick="toggleActivoProducto(${p.id},${p.activo})" title="${p.activo ? 'Desactivar' : 'Activar'}">${p.activo ? '🟢' : '⚪'}</button>
-        <button class="btn-mini" onclick="abrirProducto(${p.id})">Editar</button>
-        <button class="btn-mini danger" onclick="eliminarProducto(${p.id})">Borrar</button>
-      </div>`;
-    cont.appendChild(div);
-  });
-}
-
-async function toggleActivoProducto(id, actual) {
-  try {
-    await api('/api/admin/productos/' + id, 'PUT', { ...productos.find(p=>p.id===id), activo: actual ? 0 : 1 });
-    toast(actual ? 'Producto desactivado' : 'Producto activado');
-    await cargarTodo();
-  } catch (e) { toast(e.message, true); }
-}
-
-function abrirProducto(id = null) {
-  editandoId = id; urlSubida = '';
-  const m = $('modal-content');
-  let nombre='', catId='', desc='', precio=0, stock=-1, imagen='', activo=1, orden=0;
-  if (id) {
-    const p = productos.find(x => x.id === id);
-    if (!p) return;
-    nombre=p.nombre; catId=p.categoria_id; desc=p.descripcion; precio=p.precio; stock=p.stock; imagen=p.imagen; activo=p.activo; orden=p.orden||0;
-    if (imagen) urlSubida = imagen;
-  }
-  const catOpts = categorias.map(c => `<option value="${c.id}" ${catId==c.id?'selected':''}>${escapeHtml(c.nombre)}</option>`).join('');
-  m.innerHTML = `
-    <h3>${id ? 'Editar producto' : 'Nuevo producto'}</h3>
-    <div class="field"><label>Nombre *</label><input type="text" id="p-nombre" value="${escapeHtml(nombre)}"></div>
-    <div class="field-row">
-      <div class="field"><label>Categoría</label><select id="p-categoria">${catOpts}</select></div>
-      <div class="field"><label>Orden</label><input type="number" id="p-orden" value="${orden}" min="0"></div>
-    </div>
-    <div class="field"><label>Descripción</label><textarea id="p-descripcion" rows="2">${escapeHtml(desc)}</textarea></div>
-    <div class="field-row">
-      <div class="field"><label>Precio ($)</label><input type="number" id="p-precio" value="${precio}" step="0.01" min="0"></div>
-      <div class="field"><label>Stock (-1 = sin control)</label><input type="number" id="p-stock" value="${stock}"></div>
-    </div>
-    <div class="field"><label>Foto</label>
-      <input type="file" id="p-file" accept="image/*" onchange="subirFotoProducto(this.files)">
-      ${imagen ? `<img id="img-preview" src="${escapeHtml(imagen)}" style="display:block" alt="">` : '<img id="img-preview" alt="">'}
-      <span style="color:var(--muted);font-size:.8rem" id="p-img-url">${imagen ? '✅ Foto actual' : ''}</span>
-    </div>
-    <div class="field"><label><input type="checkbox" id="p-activo" ${activo?'checked':''}> Activo (visible en el menú)</label></div>
-    <div class="actions">
-      <button class="btn-ghost" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-primary" id="btn-guardar-producto" onclick="guardarProducto()">Guardar</button>
-    </div>`;
-  $('overlay').classList.add('open');
-}
-async function subirFotoProducto(files) {
-  const file = files[0]; if (!file) return;
-  const base64 = await fileABase64(file);
-  const prev = $('img-preview'); if (prev) { prev.src = URL.createObjectURL(file); prev.style.display = 'block'; }
-  try {
-    const r = await api('/api/admin/imagen', 'POST', { filename: file.name, data: base64, contentType: file.type });
-    urlSubida = r.url;
-    const lbl = $('p-img-url'); if (lbl) lbl.textContent = '✅ Foto subida: ' + r.key;
-  } catch (e) { toast('Error al subir foto: ' + e.message, true); }
-}
-async function guardarProducto() {
-  const body = {
-    categoria_id: parseInt($('p-categoria').value, 10), nombre: $('p-nombre').value.trim(),
-    descripcion: $('p-descripcion').value.trim(), precio: parseFloat($('p-precio').value) || 0,
-    stock: parseInt($('p-stock').value, 10), imagen: urlSubida,
-    activo: $('p-activo').checked ? 1 : 0, orden: parseInt($('p-orden').value, 10) || 0,
-  };
-  if (!body.nombre) { toast('El nombre es obligatorio', true); return; }
-  await withLoading('btn-guardar-producto', async () => {
-    if (editandoId) await api('/api/admin/productos/' + editandoId, 'PUT', body);
-    else await api('/api/admin/productos', 'POST', body);
-    toast('Producto guardado ✓'); cerrarModal(); await cargarTodo();
-  });
-}
-async function eliminarProducto(id) {
-  if (!confirm('¿Eliminar este producto?')) return;
-  try { await api('/api/admin/productos/' + id, 'DELETE'); toast('Producto eliminado'); await cargarTodo(); }
-  catch (e) { toast(e.message, true); }
-}
-
-// ============================================================
-//  CATEGORÍAS — CRUD completo (crear, editar, eliminar)
-// ============================================================
-function renderCategorias() {
-  const cont = $('lista-categorias');
-  if (!categorias.length) { cont.innerHTML = '<p class="empty">Sin categorías.</p>'; return; }
-  cont.innerHTML = '';
-  categorias.forEach(c => {
-    const n = productos.filter(p => p.categoria_id === c.id).length;
-    const div = document.createElement('div'); div.className = 'card';
-    div.innerHTML = `<div style="font-size:1.6rem">${escapeHtml(c.icono)}</div>
-      <div class="info"><h3>${escapeHtml(c.nombre)}</h3><div class="meta">${n} producto(s) · Orden: ${c.orden || 0}</div></div>
-      <div class="actions">
-        <button class="btn-mini" onclick="abrirCategoria(${c.id})">Editar</button>
-        <button class="btn-mini danger" onclick="eliminarCategoria(${c.id})">Borrar</button>
-      </div>`;
-    cont.appendChild(div);
-  });
-}
-
-function abrirCategoria(id = null) {
-  let nombre='', icono='🍽️', orden=0;
-  if (id) {
-    const c = categorias.find(x => x.id === id);
-    if (!c) return;
-    nombre=c.nombre; icono=c.icono; orden=c.orden||0;
-  }
-  const m = $('modal-content');
-  m.innerHTML = `
-    <h3>${id ? 'Editar categoría' : 'Nueva categoría'}</h3>
-    <div class="field"><label>Nombre *</label><input type="text" id="cat-nombre" value="${escapeHtml(nombre)}"></div>
-    <div class="field-row">
-      <div class="field"><label>Icono (emoji)</label><input type="text" id="cat-icono" value="${escapeHtml(icono)}" maxlength="4"></div>
-      <div class="field"><label>Orden</label><input type="number" id="cat-orden" value="${orden}" min="0"></div>
-    </div>
-    <div class="actions">
-      <button class="btn-ghost" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-primary" id="btn-guardar-cat" onclick="guardarCategoria(${id})">Guardar</button>
-    </div>`;
-  $('overlay').classList.add('open');
-  $('cat-nombre').focus();
-}
-
-async function guardarCategoria(id) {
-  const body = { nombre: $('cat-nombre').value.trim(), icono: $('cat-icono').value.trim() || '🍽️', orden: parseInt($('cat-orden').value,10)||0 };
-  if (!body.nombre) { toast('El nombre es obligatorio', true); return; }
-  await withLoading('btn-guardar-cat', async () => {
-    if (id) await api('/api/admin/categorias/' + id, 'PUT', body);
-    else await api('/api/admin/categorias', 'POST', body);
-    toast('Categoría guardada ✓'); cerrarModal(); await cargarTodo();
-  });
-}
-
-async function eliminarCategoria(id) {
-  if (!confirm('¿Eliminar esta categoría y TODOS sus productos?')) return;
-  try { await api('/api/admin/categorias/' + id, 'DELETE'); toast('Categoría eliminada'); await cargarTodo(); }
-  catch (e) { toast(e.message, true); }
-}
-
-// ============================================================
-//  MODIFIER GROUPS — con opciones inline
-// ============================================================
-function renderModifierGroups() {
-  const cont = $('lista-modifiers');
-  if (!modifierGroups.length) { cont.innerHTML = '<p class="empty">Sin grupos. Creá uno para ofrecer extras en el menú.</p>'; return; }
-  cont.innerHTML = '';
-  modifierGroups.forEach(g => {
-    const tipo = g.producto_id ? `Prod: ${escapeHtml(g.producto_nombre||'?')}` : `Cat: ${escapeHtml(g.categoria_nombre||'?')}`;
-    const badge = g.activo ? '<span class="badge ok">ACTIVO</span>' : '<span class="badge err">INACTIVO</span>';
-    const selType = g.selection_type === 'single' ? '🔘 Única' : '☑️ Múltiple';
-    const options = Array.isArray(g.options) ? g.options : [];
-    const card = document.createElement('div'); card.className = 'mg-card';
-    card.innerHTML = `
-      <div class="mg-card-header">
-        <div class="info">
-          <h3>${escapeHtml(g.nombre)} ${badge}</h3>
-          <div class="meta">${tipo} · ${selType}${g.required ? ' · Obligatorio' : ''}</div>
-        </div>
-        <div class="actions">
-          <button class="btn-mini" onclick="abrirModifierGroup(${g.id})">Editar</button>
-          <button class="btn-mini danger" onclick="eliminarModifierGroup(${g.id})">Borrar</button>
-        </div>
-      </div>
-      <div class="mg-card-options">
-        ${options.map(o => `
-          <div class="mg-opt-row" id="opt-row-${o.id}">
-            <span class="opt-name">${escapeHtml(o.nombre)}</span>
-            <span class="opt-price">${o.price_delta > 0 ? '+$' + Number(o.price_delta).toLocaleString('es-AR') : 'Gratis'}</span>
-            <div class="opt-actions">
-              <button class="btn-mini" onclick="editarOptionInline(${g.id},${o.id})">✏️</button>
-              <button class="btn-mini danger" onclick="eliminarModifierOption(${g.id},${o.id})">✕</button>
-            </div>
-          </div>`).join('')}
-        <div class="mg-opt-add" onclick="editarOptionInline(${g.id},null)"><span>＋ Agregar opción</span></div>
-      </div>`;
-    cont.appendChild(card);
-  });
-}
-
-function editarOptionInline(groupId, optionId) {
-  const g = modifierGroups.find(x => x.id === groupId); if (!g) return;
-  let nombre='', price=0;
-  if (optionId) { const opt=(g.options||[]).find(o=>o.id===optionId); if(!opt) return; nombre=opt.nombre; price=opt.price_delta||0; }
-  if (optionId) {
-    const row = document.getElementById('opt-row-'+optionId);
-    if (row) {
-      row.innerHTML = `<div class="mg-opt-edit"><input name="opt-name" value="${escapeHtml(nombre)}" placeholder="Nombre"><input name="opt-price" type="number" value="${price}" placeholder="$0" min="0" step="100"></div>
-        <button class="btn-mini" onclick="guardarOptionInline(${groupId},${optionId},this)">💾</button>
-        <button class="btn-mini" onclick="renderModifierGroups()">Cancelar</button>`;
-      row.querySelector('input[name="opt-name"]').focus();
-    }
-  } else {
-    document.querySelectorAll('.mg-card').forEach(c => {
-      const addBtn = c.querySelector('.mg-opt-add');
-      if (addBtn && addBtn.getAttribute('onclick')?.includes(`(${groupId},null)`)) {
-        const newRow = document.createElement('div'); newRow.className = 'mg-opt-row'; newRow.style.background = 'rgba(245,124,0,.05)';
-        newRow.innerHTML = `<div class="mg-opt-edit"><input name="opt-name" value="" placeholder="Nombre de la opción"><input name="opt-price" type="number" value="0" placeholder="$0" min="0" step="100"></div>
-          <button class="btn-mini" onclick="guardarOptionInline(${groupId},null,this)">💾</button>
-          <button class="btn-mini" onclick="renderModifierGroups()">Cancelar</button>`;
-        addBtn.parentNode.insertBefore(newRow, addBtn);
-        newRow.querySelector('input[name="opt-name"]').focus();
-      }
-    });
-  }
-}
-
-async function guardarOptionInline(groupId, optionId, btn) {
-  const row = btn.closest('.mg-opt-row');
-  const nombre = row.querySelector('input[name="opt-name"]').value.trim();
-  if (!nombre) { toast('El nombre es obligatorio', true); return; }
-  const body = { group_id: groupId, nombre, price_delta: parseFloat(row.querySelector('input[name="opt-price"]').value)||0, orden: 0, activo: 1 };
-  btn.disabled = true;
-  try {
-    if (optionId) await api('/api/admin/modifier-options/' + optionId, 'PUT', body);
-    else await api('/api/admin/modifier-options', 'POST', body);
-    toast('Opción guardada ✓'); await cargarTodo();
-  } catch (e) { toast(e.message, true); }
-  finally { btn.disabled = false; }
-}
-
-function abrirModifierGroup(id = null) {
-  editandoGroupId = id;
-  let nombre='', selectionType='multiple', required=false, minSel=0, maxSel=99, productoId='', categoriaId='', activo=true, orden=0;
-  if (id) {
-    const g = modifierGroups.find(x=>x.id===id); if(!g) return;
-    nombre=g.nombre; selectionType=g.selection_type||'multiple'; required=!!g.required;
-    minSel=g.min_seleccion||0; maxSel=g.max_seleccion||99;
-    productoId=g.producto_id||''; categoriaId=g.categoria_id||'';
-    activo=!!g.activo; orden=g.orden||0;
-  }
-  const prodOpts = categorias.map(c => productos.filter(p=>p.categoria_id===c.id).map(p => `<option value="${p.id}" ${productoId==p.id?'selected':''}>${escapeHtml(c.nombre)} → ${escapeHtml(p.nombre)}</option>`).join('')).join('');
-  const catOpts = categorias.map(c => `<option value="${c.id}" ${categoriaId==c.id?'selected':''}>${escapeHtml(c.nombre)}</option>`).join('');
-  const m = $('modal-content');
-  m.innerHTML = `
-    <h3>${id ? 'Editar grupo' : 'Nuevo grupo'}</h3>
-    <div class="field"><label>Nombre *</label><input type="text" id="mg-nombre" value="${escapeHtml(nombre)}"></div>
-    <div class="field-row">
-      <div class="field"><label>Tipo</label><select id="mg-seltype"><option value="multiple" ${selectionType==='multiple'?'selected':''}>Múltiple</option><option value="single" ${selectionType==='single'?'selected':''}>Única</option></select></div>
-      <div class="field"><label>Orden</label><input type="number" id="mg-orden" value="${orden}" min="0"></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Mín selecciones</label><input type="number" id="mg-min" value="${minSel}" min="0"></div>
-      <div class="field"><label>Máx selecciones</label><input type="number" id="mg-max" value="${maxSel}" min="1"></div>
-    </div>
-    <div class="field"><label><input type="checkbox" id="mg-required" ${required?'checked':''}> Obligatorio</label></div>
-    <div class="field"><label>Asociar a producto</label><select id="mg-producto"><option value="">— Ninguno —</option>${prodOpts}</select></div>
-    <div class="field"><label>Asociar a categoría</label><select id="mg-categoria"><option value="">— Ninguna —</option>${catOpts}</select></div>
-    <div class="field"><label><input type="checkbox" id="mg-activo" ${activo?'checked':''}> Activo</label></div>
-    <div class="actions">
-      <button class="btn-ghost" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-primary" id="btn-guardar-mg" onclick="guardarModifierGroup()">Guardar</button>
-    </div>`;
-  $('overlay').classList.add('open');
-}
-async function guardarModifierGroup() {
-  const body = {
-    nombre: $('mg-nombre').value.trim(), selection_type: $('mg-seltype').value, required: $('mg-required').checked,
-    min_seleccion: parseInt($('mg-min').value,10)||0, max_seleccion: parseInt($('mg-max').value,10)||99,
-    producto_id: $('mg-producto').value ? parseInt($('mg-producto').value,10) : null,
-    categoria_id: $('mg-categoria').value ? parseInt($('mg-categoria').value,10) : null,
-    orden: parseInt($('mg-orden').value,10)||0, activo: $('mg-activo').checked ? 1 : 0,
-  };
-  if (!body.nombre) { toast('El nombre es obligatorio', true); return; }
-  await withLoading('btn-guardar-mg', async () => {
-    if (editandoGroupId) await api('/api/admin/modifier-groups/' + editandoGroupId, 'PUT', body);
-    else await api('/api/admin/modifier-groups', 'POST', body);
-    toast('Grupo guardado ✓'); cerrarModal(); await cargarTodo();
-  });
-}
-async function eliminarModifierGroup(id) {
-  if (!confirm('¿Eliminar este grupo y TODAS sus opciones?')) return;
-  try { await api('/api/admin/modifier-groups/' + id, 'DELETE'); toast('Grupo eliminado'); await cargarTodo(); }
-  catch (e) { toast(e.message, true); }
-}
-async function eliminarModifierOption(groupId, optionId) {
-  if (!confirm('¿Eliminar esta opción?')) return;
-  try { await api('/api/admin/modifier-options/' + optionId, 'DELETE'); toast('Opción eliminada'); await cargarTodo(); }
-  catch (e) { toast(e.message, true); }
-}
-
-// ============================================================
-//  PROMOS — con campo descripcion
-// ============================================================
-function renderPromos() {
-  const cont = $('lista-promos');
-  if (!promos.length) { cont.innerHTML = '<p class="empty">Sin promos.</p>'; return; }
-  cont.innerHTML = '';
-  promos.forEach((p, i) => {
-    const div = document.createElement('div'); div.className = 'card';
-    div.style.flexDirection = 'column'; div.style.alignItems = 'stretch';
-    div.innerHTML = `
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <input type="checkbox" ${p.activa?'checked':''} onchange="promos[${i}].activa=this.checked" title="Activa">
-        <input style="width:48px;text-align:center;background:var(--surface2);border:none;border-radius:8px;padding:6px;color:var(--text)" value="${escapeHtml(p.icono)}" oninput="promos[${i}].icono=this.value" placeholder="🔥">
-        <input style="flex:1;min-width:120px;background:var(--surface2);border:none;border-radius:8px;padding:8px;color:var(--text)" value="${escapeHtml(p.texto)}" placeholder="Texto de la promo" oninput="promos[${i}].texto=this.value">
-        <button class="btn-mini danger" onclick="promos.splice(${i},1);renderPromos()">Quitar</button>
-      </div>
-      <div style="margin-top:8px">
-        <input style="width:100%;background:var(--surface2);border:none;border-radius:8px;padding:8px;color:var(--text);font-size:.85rem" value="${escapeHtml(p.descripcion||'')}" placeholder="Descripción (opcional)" oninput="promos[${i}].descripcion=this.value">
-      </div>`;
-    cont.appendChild(div);
-  });
-}
-function agregarPromo() { promos.push({activa:true,icono:'🔥',texto:'',descripcion:''}); renderPromos(); }
-async function guardarPromos() {
-  await withLoading('btn-guardar-promos', async () => {
-    await api('/api/admin/promos','PUT',{promos}); toast('Promos guardadas ✓');
-  });
-}
-
-// ============================================================
-//  HORARIOS
-// ============================================================
-function renderHorarios() {
-  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-  const cont = $('lista-horarios'); cont.innerHTML = '';
-  dias.forEach((nombre, i) => {
-    const h = horarios[i]; const cerrado = !h;
-    const div = document.createElement('div'); div.className = 'horario-row';
-    div.innerHTML = `<span class="dia">${nombre}</span>
-      <input type="time" value="${h?h.abre:''}" data-dia="${i}" data-tipo="abre" ${cerrado?'disabled':''}>
-      <input type="time" value="${h?h.cierra:''}" data-dia="${i}" data-tipo="cierra" ${cerrado?'disabled':''}>
-      <label class="cerrado-chk"><input type="checkbox" ${cerrado?'checked':''} onchange="toggleCerrado(${i},this.checked)"> Cerrado</label>`;
-    cont.appendChild(div);
-  });
-}
-function toggleCerrado(dia, cerrado) {
-  const a = document.querySelector(`input[data-dia="${dia}"][data-tipo="abre"]`);
-  const c = document.querySelector(`input[data-dia="${dia}"][data-tipo="cierra"]`);
-  a.disabled = c.disabled = cerrado;
-  if (cerrado) delete horarios[dia]; else horarios[dia] = {abre:a.value||'20:00',cierra:c.value||'00:00'};
-}
-async function guardarHorarios() {
-  document.querySelectorAll('.horario-row').forEach(row => {
-    const dia = parseInt(row.querySelector('input[data-tipo="abre"]').dataset.dia,10);
-    if (row.querySelector('input[type="checkbox"]').checked) { delete horarios[dia]; return; }
-    horarios[dia] = { abre: row.querySelector('input[data-tipo="abre"]').value||'20:00', cierra: row.querySelector('input[data-tipo="cierra"]').value||'00:00' };
-  });
-  await withLoading('btn-guardar-horarios', async () => {
-    await api('/api/admin/config','PUT',{horarios}); toast('Horarios guardados ✓');
-  });
-}
-
-// ============================================================
-//  GALERÍA
-// ============================================================
-function renderGaleria() {
-  const cont = $('lista-galeria');
-  if (!galeria.length) { cont.innerHTML = '<p class="empty">Sin fotos.</p>'; return; }
-  cont.innerHTML = '';
-  const grid = document.createElement('div'); grid.className = 'galeria-grid';
-  galeria.forEach((g, i) => {
-    const div = document.createElement('div'); div.className = 'galeria-item';
-    div.innerHTML = `<img src="${escapeHtml(g.url)}" alt=""><button class="rm" onclick="galeria.splice(${i},1);renderGaleria()">✕</button>`;
-    grid.appendChild(div);
-  });
-  cont.appendChild(grid);
-}
-async function subirGaleria(files) {
-  for (const file of files) {
-    try { const r = await api('/api/admin/imagen','POST',{filename:file.name,data:await fileABase64(file),contentType:file.type}); galeria.push({url:r.url,caption:''}); }
-    catch(e){ toast('Error: '+e.message,true); }
-  }
-  renderGaleria();
-}
-async function guardarGaleria() {
-  await withLoading('btn-guardar-galeria', async () => {
-    await api('/api/admin/config','PUT',{galeria}); toast('Galería guardada ✓');
-  });
-}
-
-// ============================================================
-//  CONFIG
-// ============================================================
-async function guardarConfig() {
-  await withLoading('btn-guardar-config', async () => {
-    await api('/api/admin/config','PUT',{whatsapp:$('config-whatsapp').value.trim()}); toast('Configuración guardada ✓');
-  });
-}
-
-// ============================================================
-//  HELPERS
-// ============================================================
-function cerrarModal() { $('overlay').classList.remove('open'); }
-function fileABase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]);
-    reader.onerror = reject; reader.readAsDataURL(file);
-  });
-}
-$('overlay').addEventListener('click', e => { if (e.target === $('overlay')) cerrarModal(); });
-init();
-</script>
+    <script src="app.js"></script>
 </body>
+
 </html>

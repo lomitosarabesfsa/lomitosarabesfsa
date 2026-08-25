@@ -1,7 +1,10 @@
-const CACHE_NAME = 'lomitos-fsa-v16';
+const CACHE_NAME = 'lomitos-fsa-v17';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
+  '/styles.css',
+  '/app.js',
+  '/utils.js',
   '/assets/logoheader.jpeg',
   '/assets/background.jpeg',
   '/assets/ilustrativo.jpeg',

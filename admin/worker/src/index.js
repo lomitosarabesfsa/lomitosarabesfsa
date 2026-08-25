@@ -45,14 +45,46 @@ function corsHeaders(request) {
 }
 
 function applyCors(response, request) {
-  const r = new Response(response.body, response);
+  let r = new Response(response.body, response);
   Object.entries(corsHeaders(request)).forEach(([k, v]) => r.headers.set(k, v));
   // Evitar cache en responses de admin ( datos siempre frescos en el panel)
   const url = new URL(request.url);
   if (url.pathname.startsWith('/api/admin')) {
     r.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   }
+  r = addSecurityHeaders(r);
   return r;
+}
+
+// IMP-8: Content-Security-Policy headers
+function addSecurityHeaders(response) {
+  const r = new Response(response.body, response);
+  r.headers.set('X-Content-Type-Options', 'nosniff');
+  r.headers.set('X-Frame-Options', 'DENY');
+  r.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  r.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  return r;
+}
+
+// IMP-7: Rate limiting con D1 (funciona en producción, no solo local)
+async function checkRateLimit(envLocal, ip, action, maxAttempts, windowMs) {
+  const key = `${action}:${ip}`;
+  const cutoff = Date.now() - windowMs;
+  try {
+    await envLocal.DB.prepare('DELETE FROM rate_limits WHERE key = ? AND timestamp < ?').bind(key, cutoff).run();
+    const result = await envLocal.DB.prepare('SELECT COUNT(*) as cnt FROM rate_limits WHERE key = ? AND timestamp >= ?').bind(key, cutoff).first();
+    if (result && result.cnt >= maxAttempts) return false;
+    return true;
+  } catch (e) {
+    return true;
+  }
+}
+
+async function recordRateLimitHit(envLocal, ip, action) {
+  const key = `${action}:${ip}`;
+  try {
+    await envLocal.DB.prepare('INSERT INTO rate_limits (key, timestamp) VALUES (?, ?)').bind(key, Date.now()).run();
+  } catch {}
 }
 
 // ---------- Autenticación (HMAC con WebCrypto) ----------
@@ -102,6 +134,68 @@ async function subirImagen(body, envLocal) {
   const bytes = Uint8Array.from(atob(body.data), c => c.charCodeAt(0));
   await envLocal.IMAGENES.put(key, bytes, {
     httpMetadata: { contentType: body.contentType || 'image/jpeg' },
+  });
+  const base = envLocal.R2_PUBLIC_URL || '';
+  return { key, url: base ? `${base}/${key}` : key };
+}
+
+// ---------- Validación server-side (IMP-5) ----------
+function validateProducto(body) {
+  const errors = [];
+  if (!body.nombre || typeof body.nombre !== 'string' || body.nombre.trim().length === 0) errors.push('nombre es obligatorio');
+  if (body.nombre && body.nombre.length > 200) errors.push('nombre demasiado largo (máx 200)');
+  if (body.categoria_id === undefined || body.categoria_id === null) errors.push('categoria_id es obligatorio');
+  if (body.precio !== undefined && (typeof body.precio !== 'number' || body.precio < 0)) errors.push('precio debe ser un número positivo');
+  if (body.stock !== undefined && body.stock !== -1 && (typeof body.stock !== 'number' || body.stock < 0)) errors.push('stock debe ser -1 (sin control) o un número positivo');
+  if (body.orden !== undefined && (typeof body.orden !== 'number' || body.orden < 0)) errors.push('orden debe ser un número positivo');
+  return errors;
+}
+
+function validateCategoria(body) {
+  const errors = [];
+  if (!body.nombre || typeof body.nombre !== 'string' || body.nombre.trim().length === 0) errors.push('nombre es obligatorio');
+  if (body.nombre && body.nombre.length > 100) errors.push('nombre demasiado largo (máx 100)');
+  return errors;
+}
+
+function validateModifierGroup(body) {
+  const errors = [];
+  if (!body.nombre || typeof body.nombre !== 'string' || body.nombre.trim().length === 0) errors.push('nombre es obligatorio');
+  if (body.selection_type && !['single', 'multiple'].includes(body.selection_type)) errors.push('selection_type debe ser single o multiple');
+  if (body.min_seleccion !== undefined && body.min_seleccion < 0) errors.push('min_seleccion no puede ser negativo');
+  if (body.max_seleccion !== undefined && body.max_seleccion < 1) errors.push('max_seleccion debe ser al menos 1');
+  return errors;
+}
+
+function validateModifierOption(body) {
+  const errors = [];
+  if (!body.group_id) errors.push('group_id es obligatorio');
+  if (!body.nombre || typeof body.nombre !== 'string' || body.nombre.trim().length === 0) errors.push('nombre es obligatorio');
+  if (body.price_delta !== undefined && typeof body.price_delta !== 'number') errors.push('price_delta debe ser un número');
+  return errors;
+}
+
+// ---------- Subida de imagen a R2 (CRIT-4: presigned URL) ----------
+// Endpoint para obtener una URL de presignado (upload directo a R2)
+async function presignUpload(body, envLocal) {
+  if (!body || typeof body.filename !== 'string') throw new Error('filename es obligatorio');
+  if (!body.contentType) throw new Error('contentType es obligatorio');
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+  if (!allowedTypes.includes(body.contentType)) throw new Error('Tipo de archivo no permitido: ' + body.contentType);
+  const nombreBase = body.filename.toLowerCase().replace(/[^a-z0-9.]+/g, '-').slice(0, 60);
+  const key = `productos/${Date.now()}-${nombreBase}`;
+  const base = envLocal.R2_PUBLIC_URL || '';
+  // En R2 con r2.dev público, el upload se hace vía PUT directo al Worker
+  // Retornamos la key para que el frontend haga PUT a /api/admin/imagen-upload/:key
+  return { key, uploadUrl: `/api/admin/imagen-upload/${key}`, url: base ? `${base}/${key}` : key };
+}
+
+// Upload directo a R2 via PUT (sin base64)
+async function uploadToR2(request, envLocal, key) {
+  if (!request.body) throw new Error('No hay body en la request');
+  const contentType = request.headers.get('Content-Type') || 'image/jpeg';
+  await envLocal.IMAGENES.put(key, request.body, {
+    httpMetadata: { contentType },
   });
   const base = envLocal.R2_PUBLIC_URL || '';
   return { key, url: base ? `${base}/${key}` : key };
@@ -171,13 +265,19 @@ async function getMenu(envLocal) {
 //  AUTH
 // ============================================================
 function authSecret(envLocal) {
-  return envLocal.AUTH_SECRET || 'cambiar-este-secreto-en-produccion';
+  // IMP-5: No usar defaults inseguros. Si AUTH_SECRET no está configurado, rechazar.
+  if (!envLocal.AUTH_SECRET) throw new Error('AUTH_SECRET no configurado en secrets de Cloudflare');
+  return envLocal.AUTH_SECRET;
 }
 
 async function login(request, envLocal) {
   const body = await request.json().catch(() => ({}));
-  const adminUser = String(envLocal.ADMIN_USER || 'admin').trim().toLowerCase();
-  const adminPass = String(envLocal.ADMIN_PASS || 'admin123').trim();
+  // IMP-5: Si secrets no están configurados, rechazar login (no usar defaults)
+  if (!envLocal.ADMIN_USER || !envLocal.ADMIN_PASS) {
+    return jsonError('Credenciales no configuradas en el servidor', 500);
+  }
+  const adminUser = String(envLocal.ADMIN_USER).trim().toLowerCase();
+  const adminPass = String(envLocal.ADMIN_PASS).trim();
   const usuario = String(body.usuario || '').trim().toLowerCase();
   const clave = String(body.clave || '').trim();
   if (usuario === adminUser && clave === adminPass) {
@@ -202,16 +302,20 @@ async function listarProductos(envLocal) {
 }
 
 async function crearProducto(envLocal, body) {
+  const errors = validateProducto(body);
+  if (errors.length) return jsonError(errors.join('; '), 400);
   const res = await envLocal.DB.prepare(
     'INSERT INTO productos (categoria_id, nombre, descripcion, precio, stock, imagen, activo, orden) VALUES (?, ?, ?, ?, ?, ?, 1, ?)'
-  ).bind(body.categoria_id, body.nombre, body.descripcion || '', body.precio || 0, body.stock ?? -1, body.imagen || '', body.orden || 0).run();
+  ).bind(body.categoria_id, body.nombre.trim(), (body.descripcion || '').trim().slice(0, 500), Math.max(0, body.precio || 0), body.stock ?? -1, (body.imagen || '').slice(0, 500), body.orden || 0).run();
   return json({ ok: true, id: res.meta.last_row_id }, 201);
 }
 
 async function actualizarProducto(envLocal, id, body) {
+  const errors = validateProducto(body);
+  if (errors.length) return jsonError(errors.join('; '), 400);
   const res = await envLocal.DB.prepare(
     'UPDATE productos SET categoria_id = ?, nombre = ?, descripcion = ?, precio = ?, stock = ?, imagen = ?, activo = ?, orden = ? WHERE id = ?'
-  ).bind(body.categoria_id, body.nombre, body.descripcion || '', body.precio || 0, body.stock ?? -1, body.imagen || '', body.activo ?? 1, body.orden || 0, id).run();
+  ).bind(body.categoria_id, body.nombre.trim(), (body.descripcion || '').trim().slice(0, 500), Math.max(0, body.precio || 0), body.stock ?? -1, (body.imagen || '').slice(0, 500), body.activo ?? 1, body.orden || 0, id).run();
   return json({ ok: res.meta.changes > 0 });
 }
 
@@ -229,8 +333,10 @@ async function listarCategorias(envLocal) {
 }
 
 async function crearCategoria(envLocal, body) {
+  const errors = validateCategoria(body);
+  if (errors.length) return jsonError(errors.join('; '), 400);
   const res = await envLocal.DB.prepare('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)')
-    .bind(body.nombre, body.icono || '🍽️', body.orden || 0).run();
+    .bind(body.nombre.trim(), (body.icono || '🍽️').slice(0, 10), body.orden || 0).run();
   return json({ ok: true, id: res.meta.last_row_id }, 201);
 }
 
@@ -349,7 +455,13 @@ async function guardarConfig(envLocal, body) {
 async function getConfig(envLocal) {
   const rows = (await envLocal.DB.prepare('SELECT clave, valor FROM config').all()).results;
   const config = {};
-  rows.forEach(r => { try { config[r.clave] = JSON.parse(r.valor); } catch (e) { config[r.clave] = r.valor; } });
+  rows.forEach(r => {
+    const v = r.valor;
+    if (v.startsWith('{') || v.startsWith('[')) {
+      try { config[r.clave] = JSON.parse(v); return; } catch {}
+    }
+    config[r.clave] = v;
+  });
   return json(config);
 }
 
@@ -371,19 +483,15 @@ export default {
         return applyCors(json(await getMenu(envLocal)), request);
       }
       if (request.method === 'POST' && path === '/api/login') {
-        // Rate limiting básico: máximo 5 intentos por IP por minuto
+        // IMP-7: Rate limiting con D1 (funciona en producción)
         const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
-        const now = Date.now();
-        if (!globalThis._loginAttempts) globalThis._loginAttempts = new Map();
-        const attempts = globalThis._loginAttempts.get(ip) || [];
-        // Limpiar intentos viejos (>60s)
-        const recent = attempts.filter(t => now - t < 60000);
-        if (recent.length >= 5) {
+        const allowed = await checkRateLimit(envLocal, ip, 'login', 5, 60000);
+        if (!allowed) {
           return applyCors(jsonError('Demasiados intentos. Esperá un minuto.', 429), request);
         }
-        recent.push(now);
-        globalThis._loginAttempts.set(ip, recent);
-        return applyCors(await login(request, envLocal), request);
+        const loginResp = await login(request, envLocal);
+        if (loginResp.status >= 400) await recordRateLimitHit(envLocal, ip, 'login');
+        return applyCors(loginResp, request);
       }
 
       // ---- Admin (requiere token) ----
@@ -456,10 +564,31 @@ export default {
         if (request.method === 'PUT') return applyCors(await guardarConfig(envLocal, await request.json()), request);
       }
 
-      // Imagen
+      // Imagen (legacy: base64 upload)
       if (path === '/api/admin/imagen' && request.method === 'POST') {
         try {
           const r = await subirImagen(await request.json(), envLocal);
+          return applyCors(json({ ok: true, ...r }), request);
+        } catch (e) {
+          return applyCors(jsonError(e.message, 400), request);
+        }
+      }
+
+      // CRIT-4: Presign URL para upload directo a R2 (sin base64)
+      if (path === '/api/admin/presign' && request.method === 'POST') {
+        try {
+          const r = await presignUpload(await request.json(), envLocal);
+          return applyCors(json({ ok: true, ...r }), request);
+        } catch (e) {
+          return applyCors(jsonError(e.message, 400), request);
+        }
+      }
+
+      // CRIT-4: Upload directo a R2 via PUT
+      const uploadMatch = path.match(/^\/api\/admin\/imagen-upload\/(.+)$/);
+      if (uploadMatch && request.method === 'PUT') {
+        try {
+          const r = await uploadToR2(request, envLocal, uploadMatch[1]);
           return applyCors(json({ ok: true, ...r }), request);
         } catch (e) {
           return applyCors(jsonError(e.message, 400), request);

@@ -1,0 +1,26 @@
+# ============================================================
+#  Configuración para tests E2E con wrangler dev
+#  Ejecutar: npx vitest run worker/test/e2e.test.js
+# ============================================================
+
+name = "lomitos-api-e2e"
+main = "worker/src/index.js"
+compatibility_date = "2025-01-01"
+
+# D1 local para tests
+[[d1_databases]]
+binding = "DB"
+database_name = "lomitos-db-e2e"
+database_id = "e2e-test-db-id"
+
+# R2 local para tests
+[[r2_buckets]]
+binding = "IMAGENES"
+bucket_name = "lomitos-e2e"
+
+# Variables de entorno para tests
+[vars]
+R2_PUBLIC_URL = "https://pub-test.r2.dev"
+ADMIN_USER = "testadmin"
+ADMIN_PASS = "testpass123"
+AUTH_SECRET = "test-secret-key-for-e2e-1234567890"
