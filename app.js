@@ -689,7 +689,7 @@
 
                     const div = document.createElement('div');
                     div.className = 'cart-item';
-                    const claveSegura = String(item.clave || item.id).replace(/[^a-z0-9+,]/gi, '');
+                    const claveSegura = String(item.clave || item.id);
                     const nombreSeguro = escapeHtml(item.nombre);
                     const mods = item.modificadores || item.adicionales || [];
                     let extrasHTML = '';
