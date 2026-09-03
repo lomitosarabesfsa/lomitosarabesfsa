@@ -602,12 +602,13 @@
             }
         }
 
-        function seleccionarMetodo(metodo, btn) {
+        function seleccionarMetodo(metodo) {
             metodoEntrega = metodo;
-            document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
             const campoDireccion = document.getElementById('campo-direccion');
-            campoDireccion.style.display = metodo === 'Retiro en local' ? 'none' : 'block';
+            if (campoDireccion) {
+                campoDireccion.style.display = metodo === 'Retiro en local' ? 'none' : 'block';
+            }
+            actualizarBotonPaso();
         }
 
         function irACheckout() {
@@ -619,6 +620,7 @@
             document.getElementById('step-1').classList.remove('active');
             document.getElementById('step-2').classList.add('active');
             document.getElementById('cart-title').textContent = "Finalizar Pedido";
+            irAPaso(1);
         }
 
         function volverAlCarrito() {
@@ -627,9 +629,133 @@
             document.getElementById('cart-title').textContent = "Tu Pedido";
         }
 
-        function toggleVuelto() {
-            const pago = document.getElementById('form-pago').value;
-            document.getElementById('campo-vuelto').style.display = pago === 'Efectivo' ? 'block' : 'none';
+        // ============================================================
+        //  CHECKOUT WIZARD: 3 etapas con marcadores de progreso
+        //  (patrón adaptado del demo: 1 Recibís → 2 Pagás → 3 Confirmás)
+        // ============================================================
+        let pasoCheckout = 1;
+        let pagoCheckout = '';
+
+        function irAPaso(n) {
+            pasoCheckout = n;
+            document.querySelectorAll('#step-2 .checkout-paso').forEach(p => {
+                p.classList.toggle('active', Number(p.dataset.paso) === n);
+            });
+            document.querySelectorAll('#checkout-progress .checkout-step').forEach(s => {
+                const cs = Number(s.dataset.cs);
+                s.classList.toggle('done', cs < n);
+                s.classList.toggle('active', cs === n);
+            });
+            const anuncio = document.getElementById('paso-announce');
+            if (anuncio) anuncio.textContent = `Paso ${n} de 3`;
+            const btnAtras = document.getElementById('btn-paso-atras');
+            const btnSiguiente = document.getElementById('btn-paso-siguiente');
+            const btnEnviar = document.getElementById('btn-enviar-pedido');
+            if (btnAtras) btnAtras.hidden = n === 1;
+            if (btnSiguiente) btnSiguiente.hidden = n === 3;
+            if (btnEnviar) btnEnviar.hidden = n !== 3;
+            if (n === 3) renderResumenCheckout();
+            actualizarBotonPaso();
+            const body = document.querySelector('#step-2 .step-body');
+            if (body) body.scrollTop = 0;
+        }
+
+        // Cada etapa se valida antes de habilitar "Continuar" / "Enviar"
+        function paso1Valido() {
+            if (metodoEntrega === 'Retiro en local') return true;
+            const dir = (document.getElementById('form-direccion').value || '').trim();
+            return dir.length > 0;
+        }
+
+        function actualizarBotonPaso() {
+            const btnSiguiente = document.getElementById('btn-paso-siguiente');
+            const btnEnviar = document.getElementById('btn-enviar-pedido');
+            if (pasoCheckout === 1 && btnSiguiente) {
+                btnSiguiente.disabled = !paso1Valido();
+            } else if (pasoCheckout === 2 && btnSiguiente) {
+                btnSiguiente.disabled = !pagoCheckout;
+            } else if (pasoCheckout === 3 && btnEnviar) {
+                const nombre = (document.getElementById('form-nombre').value || '').trim();
+                btnEnviar.disabled = !nombre;
+            }
+        }
+
+        function renderResumenCheckout() {
+            const cont = document.getElementById('resumen-checkout');
+            if (!cont) return;
+            if (carrito.length === 0) {
+                cont.innerHTML = '';
+                return;
+            }
+            let html = '';
+            let total = 0;
+            carrito.forEach(item => {
+                const subtotal = calcularSubtotalItem(item);
+                total += subtotal;
+                const mods = item.modificadores || item.adicionales || [];
+                let nombre = `${item.cantidad}x ${escapeHtml(item.nombre)}`;
+                if (mods.length > 0) {
+                    nombre += `<br><span class="resumen-mods">+ ${mods.map(m => escapeHtml(m.nombre)).join(', ')}</span>`;
+                }
+                html += `<div class="summary-row"><span class="summary-item">${nombre}</span><span class="summary-val">$${subtotal.toLocaleString('es-AR')}</span></div>`;
+            });
+            html += `<div class="summary-row total"><span>Total</span><span>$${total.toLocaleString('es-AR')}</span></div>`;
+            html += `<div class="summary-row summary-meta"><span>Entrega</span><span>${escapeHtml(metodoEntrega)}</span></div>`;
+            html += `<div class="summary-row summary-meta"><span>Pago</span><span>${pagoCheckout ? escapeHtml(pagoCheckout) : '—'}</span></div>`;
+            cont.innerHTML = html;
+        }
+
+        // Restablece el wizard a su estado inicial (tras enviar un pedido)
+        function resetearCheckout() {
+            metodoEntrega = 'Envío a domicilio';
+            pagoCheckout = '';
+            document.querySelectorAll('#step-2 input[name="entrega"], #step-2 input[name="pago"]').forEach(r => {
+                r.checked = false;
+                const card = r.closest('.option-card');
+                if (card) card.classList.remove('checked');
+            });
+            const envio = document.querySelector('#step-2 input[name="entrega"][value="Envío a domicilio"]');
+            if (envio) {
+                envio.checked = true;
+                const card = envio.closest('.option-card');
+                if (card) card.classList.add('checked');
+            }
+            ['form-nombre', 'form-direccion', 'form-barrio', 'form-dpto', 'form-notas'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const campoDireccion = document.getElementById('campo-direccion');
+            if (campoDireccion) campoDireccion.style.display = 'block';
+            irAPaso(1);
+        }
+
+        // Bindings del wizard (tarjetas de opción + validación en vivo)
+        function inicializarCheckoutWizard() {
+            document.querySelectorAll('#step-2 input[name="entrega"]').forEach(input => {
+                input.addEventListener('change', () => {
+                    const group = input.closest('.opciones-cards');
+                    if (group) group.querySelectorAll('.option-card').forEach(c => c.classList.remove('checked'));
+                    const card = input.closest('.option-card');
+                    if (card) card.classList.add('checked');
+                    seleccionarMetodo(input.value);
+                });
+            });
+            document.querySelectorAll('#step-2 input[name="pago"]').forEach(input => {
+                input.addEventListener('change', () => {
+                    document.querySelectorAll('#step-2 input[name="pago"]').forEach(r => {
+                        const card = r.closest('.option-card');
+                        if (card) card.classList.toggle('checked', r.checked);
+                    });
+                    pagoCheckout = input.value;
+                    actualizarBotonPaso();
+                });
+            });
+            // Validación en vivo de los campos que habilitan el botón
+            ['form-direccion', 'form-nombre'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', actualizarBotonPaso);
+            });
+            irAPaso(1);
         }
 
         // Feedback al agregar: pulso limpio del contador del carrito
@@ -835,36 +961,28 @@
         //  ENVIAR PEDIDO POR WHATSAPP
         // ============================================================
         function enviarPedidoWhatsApp() {
-            const nombre = document.getElementById('form-nombre').value.trim();
-            const telefono = document.getElementById('form-telefono').value.trim();
-            const direccion = document.getElementById('form-direccion').value.trim();
-            const barrio = document.getElementById('form-barrio').value.trim();
-            const dpto = document.getElementById('form-dpto').value.trim();
-            const pago = document.getElementById('form-pago').value;
-            const vuelto = document.getElementById('form-vuelto').value.trim();
-            const notas = document.getElementById('form-notas').value.trim();
+            const nombre = (document.getElementById('form-nombre').value || '').trim();
+            const direccion = (document.getElementById('form-direccion').value || '').trim();
+            const barrio = (document.getElementById('form-barrio').value || '').trim();
+            const dpto = (document.getElementById('form-dpto').value || '').trim();
+            const notas = (document.getElementById('form-notas').value || '').trim();
 
             if (!nombre) {
                 showToast('Por favor, ingresá tu nombre.', 'warning');
-                return;
-            }
-            if (!telefono) {
-                showToast('Por favor, ingresá tu teléfono.', 'warning');
                 return;
             }
             if (metodoEntrega === 'Envío a domicilio' && !direccion) {
                 showToast('Por favor, ingresá tu dirección.', 'warning');
                 return;
             }
-            if (pago === 'Efectivo' && vuelto && !/^\d+$/.test(vuelto)) {
-                showToast('El monto con el que pagás debe ser un número entero.', 'warning');
+            if (!pagoCheckout) {
+                showToast('Elegí un método de pago.', 'warning');
                 return;
             }
 
             let mensaje = `*NUEVO PEDIDO - LOMITOS ÁRABES FSA*\n`;
             mensaje += `----------------------------------\n`;
             mensaje += `*Cliente:* ${nombre}\n`;
-            mensaje += `*Teléfono:* ${telefono}\n`;
             mensaje += `*Pedido para:* ${metodoEntrega}\n`;
 
             if (metodoEntrega === 'Envío a domicilio') {
@@ -873,8 +991,7 @@
                 if (dpto) mensaje += `*Depto:* ${dpto}\n`;
             }
 
-            mensaje += `*Método de pago:* ${pago}\n`;
-            if (pago === 'Efectivo' && vuelto) mensaje += `*Paga con:* $${vuelto}\n`;
+            mensaje += `*Método de pago:* ${pagoCheckout}\n`;
             if (notas) mensaje += `*Notas:* ${notas}\n`;
 
         mensaje += `----------------------------------\n`;
@@ -907,13 +1024,7 @@
 
             // Reset form
             volverAlCarrito();
-            document.getElementById('form-nombre').value = '';
-            document.getElementById('form-telefono').value = '';
-            document.getElementById('form-direccion').value = '';
-            document.getElementById('form-barrio').value = '';
-            document.getElementById('form-dpto').value = '';
-            document.getElementById('form-notas').value = '';
-            document.getElementById('form-vuelto').value = '';
+            resetearCheckout();
         }
 
         // ============================================================
@@ -975,6 +1086,9 @@
 
             // Load cart from localStorage
             cargarCarrito();
+
+            // Checkout wizard: tarjetas de opción y marcadores de etapas
+            inicializarCheckoutWizard();
 
             // Accesibilidad: cierre con ESC y foco atrapado dentro de los modales
             document.addEventListener('keydown', (e) => {
@@ -1409,11 +1523,12 @@
                     cerrarPromo();
                     break;
                 // --- Carrito y checkout ---
-                case 'seleccionar-metodo': {
-                    const metodo = target.dataset.metodo === 'envio' ? 'Envío a domicilio' : 'Retiro en local';
-                    seleccionarMetodo(metodo, target);
+                case 'siguiente-paso':
+                    if (pasoCheckout < 3) irAPaso(pasoCheckout + 1);
                     break;
-                }
+                case 'paso-atras':
+                    if (pasoCheckout > 1) irAPaso(pasoCheckout - 1);
+                    break;
                 case 'compartir-pedido':
                     compartirPedido();
                     break;
@@ -1429,14 +1544,6 @@
             }
         });
 
-        // Listener para eventos change (toggle-vuelto)
-        document.addEventListener('change', (e) => {
-            const target = e.target.closest('[data-action]');
-            if (!target) return;
-            if (target.dataset.action === 'toggle-vuelto') {
-                toggleVuelto();
-            }
-        });
 
         // Listener para keydown en mobile-menu links (Enter/Space)
         document.addEventListener('keydown', (e) => {

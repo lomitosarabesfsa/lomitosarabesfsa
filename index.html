@@ -305,15 +305,6 @@
                 <!-- Items del carrito -->
             </div>
             <div class="cart-footer">
-                <div class="delivery-options">
-                    <label>¿Cómo recibís tu pedido?</label>
-                    <div class="options-group">
-                        <button class="option-btn active" data-action="seleccionar-metodo" data-metodo="envio">🛵
-                            Envío</button>
-                        <button class="option-btn" data-action="seleccionar-metodo" data-metodo="retiro">🥡
-                            Retiro</button>
-                    </div>
-                </div>
                 <div class="cart-total">
                     <span>Total:</span>
                     <span id="cart-total-price">$0</span>
@@ -341,9 +332,9 @@
             </div>
         </div>
 
-        <!-- Paso 2: Formulario -->
+        <!-- Paso 2: Checkout (wizard de 3 etapas con marcadores de progreso) -->
         <div class="cart-step" id="step-2">
-            <!-- Cabecera del paso 2: fija -->
+            <!-- Cabecera fija -->
             <div class="step-header">
                 <button class="back-to-cart" data-action="volver-carrito">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -352,69 +343,138 @@
                     </svg>
                     Volver al carrito
                 </button>
-                <h3 class="checkout-title">Datos de Entrega</h3>
+                <h3 class="checkout-title">Finalizar Pedido</h3>
             </div>
 
-            <!-- Formulario scrolleable -->
-            <div class="step-body">
-                <div class="checkout-form">
-                    <div class="form-group">
-                        <label>Nombre Completo</label>
-                        <input type="text" id="form-nombre" placeholder="Ej: Juan Pérez">
-                    </div>
+            <!-- Marcadores de etapas: 1 Recibís → 2 Pagás → 3 Confirmás -->
+            <div class="checkout-progress" id="checkout-progress" aria-hidden="true">
+                <div class="checkout-step done" data-cs="1">
+                    <span class="cs-ico"><span class="cs-num">1</span><span class="cs-check">✓</span></span>
+                    <span class="cs-label">Recibís</span>
+                </div>
+                <div class="cs-line"></div>
+                <div class="checkout-step" data-cs="2">
+                    <span class="cs-ico"><span class="cs-num">2</span><span class="cs-check">✓</span></span>
+                    <span class="cs-label">Pagás</span>
+                </div>
+                <div class="cs-line"></div>
+                <div class="checkout-step" data-cs="3">
+                    <span class="cs-ico"><span class="cs-num">3</span><span class="cs-check">✓</span></span>
+                    <span class="cs-label">Confirmás</span>
+                </div>
+            </div>
 
-                    <div class="form-group">
-                        <label>Tu Teléfono</label>
-                        <input type="tel" id="form-telefono" placeholder="Ej: 3704-123456" inputmode="tel" autocomplete="tel">
+            <!-- Contenido scrolleable: un solo paso visible por vez -->
+            <div class="step-body">
+                <p class="sr-only" id="paso-announce" aria-live="polite"></p>
+
+                <!-- Etapa 1: ¿Cómo lo recibís? -->
+                <div class="checkout-paso active" data-paso="1">
+                    <p class="paso-titulo">¿Cómo lo querés recibir?</p>
+                    <div class="opciones-cards" role="radiogroup" aria-label="Método de entrega">
+                        <label class="option-card checked">
+                            <input type="radio" name="entrega" value="Envío a domicilio" checked>
+                            <span class="oc-icon">🛵</span>
+                            <span class="oc-info">
+                                <span class="oc-title">Envío a domicilio</span>
+                                <span class="oc-desc">Repartimos a toda la ciudad</span>
+                            </span>
+                        </label>
+                        <label class="option-card">
+                            <input type="radio" name="entrega" value="Retiro en local">
+                            <span class="oc-icon">🥡</span>
+                            <span class="oc-info">
+                                <span class="oc-title">Retiro en el local</span>
+                                <span class="oc-desc">Barrio Colluccio, Formosa</span>
+                            </span>
+                        </label>
                     </div>
 
                     <div id="campo-direccion">
                         <div class="form-group">
-                            <label>Dirección Exacta</label>
-                            <input type="text" id="form-direccion" placeholder="Calle y número">
+                            <label for="form-direccion">Dirección Exacta</label>
+                            <input type="text" id="form-direccion" placeholder="Calle y número" autocomplete="street-address">
                         </div>
                         <div class="form-row form-row-mt">
                             <div class="form-group">
-                                <label>Barrio</label>
+                                <label for="form-barrio">Barrio</label>
                                 <input type="text" id="form-barrio" placeholder="Ej: Centro">
                             </div>
                             <div class="form-group">
-                                <label>Dpto/Piso</label>
+                                <label for="form-dpto">Dpto/Piso</label>
                                 <input type="text" id="form-dpto" placeholder="Opcional">
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="form-group">
-                        <label>Método de Pago</label>
-                        <select id="form-pago" data-action="toggle-vuelto">
-                            <option value="Efectivo">Efectivo</option>
-                            <option value="Transferencia">Transferencia</option>
-                            <option value="Mercado Pago">Mercado Pago</option>
-                        </select>
+                <!-- Etapa 2: ¿Cómo pagás? -->
+                <div class="checkout-paso" data-paso="2">
+                    <p class="paso-titulo">¿Cómo vas a pagar?</p>
+                    <div class="opciones-cards" role="radiogroup" aria-label="Método de pago">
+                        <label class="option-card">
+                            <input type="radio" name="pago" value="Efectivo">
+                            <span class="oc-icon">💵</span>
+                            <span class="oc-info">
+                                <span class="oc-title">Efectivo</span>
+                                <span class="oc-desc">Pagás cuando retiras o recibís tu pedido</span>
+                            </span>
+                        </label>
+                        <label class="option-card">
+                            <input type="radio" name="pago" value="Transferencia">
+                            <span class="oc-icon">🏦</span>
+                            <span class="oc-info">
+                                <span class="oc-title">Transferencia</span>
+                                <span class="oc-desc">Te pasamos el CBU por WhatsApp</span>
+                            </span>
+                        </label>
+                        <label class="option-card">
+                            <input type="radio" name="pago" value="Mercado Pago">
+                            <span class="oc-icon">📲</span>
+                            <span class="oc-info">
+                                <span class="oc-title">Mercado Pago</span>
+                                <span class="oc-desc">Te enviamos alias o link de pago</span>
+                            </span>
+                        </label>
                     </div>
+                </div>
 
-                    <div class="form-group" id="campo-vuelto">
-                        <label>¿Con cuánto pagás? (Para el vuelto)</label>
-                        <input type="number" id="form-vuelto" placeholder="Ej: 5000">
-                    </div>
-
+                <!-- Etapa 3: datos + confirmación -->
+                <div class="checkout-paso" data-paso="3">
+                    <p class="paso-titulo">Tus datos</p>
                     <div class="form-group">
-                        <label>Notas / Aclaraciones</label>
-                        <textarea id="form-notas" rows="2" placeholder="Ej: Sin cebolla, tocar timbre..."></textarea>
+                        <label for="form-nombre">Tu Nombre</label>
+                        <input type="text" id="form-nombre" placeholder="Ej: Juan Pérez" autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label for="form-notas">Notas / Aclaraciones</label>
+                        <textarea id="form-notas" rows="2" placeholder="Opcional: sin cebolla, tocar timbre..."></textarea>
+                    </div>
+                    <div class="summary-box" id="resumen-checkout">
+                        <!-- Se rellena al llegar a esta etapa -->
                     </div>
                 </div>
             </div>
 
-            <!-- Botón anclado al fondo -->
+            <!-- Acciones ancladas al fondo -->
             <div class="step-footer">
-                <button class="checkout-btn" data-action="enviar-whatsapp">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-                        <path
-                            d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
-                    </svg>
-                    Confirmar y Enviar Pedido
-                </button>
+                <div class="paso-actions">
+                    <button class="btn-atras-paso" id="btn-paso-atras" data-action="paso-atras" hidden>← Atrás</button>
+                    <button class="checkout-btn" id="btn-paso-siguiente" data-action="siguiente-paso">
+                        <span>Continuar</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </button>
+                    <button class="checkout-btn" id="btn-enviar-pedido" data-action="enviar-whatsapp" hidden>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                            <path
+                                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
+                        </svg>
+                        Confirmar y Enviar Pedido
+                    </button>
+                </div>
             </div>
         </div>
     </div>
