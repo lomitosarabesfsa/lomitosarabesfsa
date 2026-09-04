@@ -1204,10 +1204,6 @@
                         : 'Gratis';
                     const priceClass = opt.price_delta > 0 ? '' : 'free';
 
-                    optDiv.setAttribute('role', isSingle ? 'radio' : 'checkbox');
-                    optDiv.setAttribute('aria-checked', 'false');
-                    optDiv.setAttribute('tabindex', '0');
-
                     optDiv.innerHTML = `
                         <div class="bs-option-left">
                             <div class="${indicator}"></div>
@@ -1217,12 +1213,6 @@
                     `;
 
                     optDiv.addEventListener('click', () => toggleBsOption(g, opt, optDiv, isSingle));
-                    optDiv.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            toggleBsOption(g, opt, optDiv, isSingle);
-                        }
-                    });
                     div.appendChild(optDiv);
                 });
 
@@ -1238,42 +1228,33 @@
         function toggleBsOption(group, option, optDiv, isSingle) {
             if (isSingle) {
                 // Deseleccionar la anterior
-                const anteriorId = bsSeleccion.get(group.id);
-                if (anteriorId && anteriorId !== option.id) {
-                    const elAnt = document.querySelector(`.bs-option[data-group-id="${group.id}"][data-option-id="${anteriorId}"]`);
-                    if (elAnt) {
-                        elAnt.classList.remove('selected');
-                        elAnt.setAttribute('aria-checked', 'false');
-                    }
+                const prev = bsSeleccion.get(group.id);
+                if (prev) {
+                    const prevDiv = document.querySelector(`.bs-option[data-option-id="${prev}"]`);
+                    if (prevDiv) prevDiv.classList.remove('selected');
                 }
-                // Si ya está seleccionada y es opcional (min 0), permitir deseleccionar
-                if (anteriorId === option.id && group.min_selections === 0) {
+                if (bsSeleccion.get(group.id) === option.id) {
                     bsSeleccion.set(group.id, null);
                     optDiv.classList.remove('selected');
-                    optDiv.setAttribute('aria-checked', 'false');
                 } else {
                     bsSeleccion.set(group.id, option.id);
                     optDiv.classList.add('selected');
-                    optDiv.setAttribute('aria-checked', 'true');
                 }
             } else {
-                const sel = bsSeleccion.get(group.id);
-                if (sel.has(option.id)) {
-                    sel.delete(option.id);
+                const set = bsSeleccion.get(group.id);
+                if (set.has(option.id)) {
+                    set.delete(option.id);
                     optDiv.classList.remove('selected');
-                    optDiv.setAttribute('aria-checked', 'false');
                 } else {
-                    if (group.max_selections > 0 && sel.size >= group.max_selections) {
-                        showToast(`Máximo ${group.max_selections} opciones permitidas`, 'warning');
+                    if (set.size >= group.max_seleccion) {
+                        showToast(`Máximo ${group.max_seleccion} opciones en "${group.nombre}"`, 'warning');
                         return;
                     }
-                    sel.add(option.id);
+                    set.add(option.id);
                     optDiv.classList.add('selected');
-                    optDiv.setAttribute('aria-checked', 'true');
                 }
             }
             actualizarBsTotal();
-            validarBsBoton();
         }
 
         function actualizarBsTotal() {

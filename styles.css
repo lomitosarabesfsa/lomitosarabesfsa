@@ -5,7 +5,6 @@
             --primary: #F57C00;
             --secondary: #D84315;
             --tertiary: #FFB300;
-            --action-primary: #FF6F61;
             --bg: #121212;
             --surface: #1E1E1E;
             --surface-hover: #2a2a2a;
@@ -140,11 +139,6 @@
             font-family: 'Anton', sans-serif;
             letter-spacing: 1px;
             text-transform: uppercase;
-        }
-
-        *:focus-visible {
-            outline: 2px solid var(--primary);
-            outline-offset: 2px;
         }
 
         /* ============================================
@@ -293,8 +287,8 @@
         .theme-toggle {
             background: rgba(255, 255, 255, 0.1);
             border: none;
-            width: 44px;
-            height: 44px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
@@ -671,8 +665,8 @@
             background: var(--surface);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--primary);
-            width: 44px;
-            height: 44px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -951,11 +945,11 @@
         }
 
         .producto-fila-add {
-            width: 44px;
-            height: 44px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             /* Coral: complementario del turquesa del carrito, máximo contraste sin romper armonía */
-            background: var(--action-primary);
+            background: #FF6F61;
             color: #FFF;
             border: none;
             font-size: 1.7rem;
@@ -1365,8 +1359,8 @@
             background: rgba(0,0,0,0.6);
             color: white;
             border: none;
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             font-size: 1.2rem;
             cursor: pointer;
@@ -1399,8 +1393,8 @@
         .close-btn {
             background: rgba(255, 255, 255, 0.05);
             border: none;
-            width: 44px;
-            height: 44px;
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
             color: var(--text);
             cursor: pointer;
