@@ -1070,6 +1070,16 @@
             margin-bottom: 24px;
         }
 
+        /* Grupo obligatorio al que le falta la selección: se resalta para que
+           el cliente vea qué tiene que elegir (en vez de un botón deshabilitado) */
+        .bs-group.bs-group-missing {
+            border-left: 3px solid #ef4444;
+            background: rgba(239, 68, 68, 0.06);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin: 0 -12px 20px;
+        }
+
         .bs-group-header {
             display: flex;
             justify-content: space-between;

@@ -960,6 +960,22 @@
         // ============================================================
         //  ENVIAR PEDIDO POR WHATSAPP
         // ============================================================
+        // Abre WhatsApp de forma confiable también dentro de los webviews
+        // (Instagram/Facebook), donde window.open puede ser bloqueado en
+        // silencio y el cliente queda trabado en "Confirmar y Enviar".
+        function abrirWhatsApp(url) {
+            const webview = /Instagram|FBAN|FBAV|FB_IAB|Line\//i.test(navigator.userAgent || '');
+            if (!webview) {
+                let win = null;
+                try { win = window.open(url, '_blank', 'noopener'); } catch (e) { win = null; }
+                if (win) return true;
+            }
+            // Webview o popup bloqueado: navegación real (la disparó el click
+            // del usuario, así que el navegador no la bloquea).
+            window.location.href = url;
+            return true;
+        }
+
         function enviarPedidoWhatsApp() {
             const nombre = (document.getElementById('form-nombre').value || '').trim();
             const direccion = (document.getElementById('form-direccion').value || '').trim();
@@ -1012,7 +1028,7 @@
             mensaje += `*TOTAL: $${total.toLocaleString('es-AR')}*`;
 
             const url = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
-            window.open(url, '_blank');
+            abrirWhatsApp(url);
             trackEvent('pedido_enviado', { total: total, items: carrito.length, metodo: metodoEntrega });
 
             // Clear cart after sending
@@ -1168,6 +1184,7 @@
             groups.forEach(g => {
                 const div = document.createElement('div');
                 div.className = 'bs-group';
+                div.dataset.groupId = g.id;
 
                 const badgeClass = g.required ? 'required' : 'optional';
                 const badgeText = g.required ? 'Obligatorio' : 'Opcional';
@@ -1235,6 +1252,46 @@
             document.body.style.overflow = 'hidden';
         }
 
+        // ── Validación de grupos obligatorios ─────────────────────────
+        // Mínimo exigido: si el grupo es obligatorio, al menos 1 (o su
+        // min_seleccion explícito si es mayor).
+        function minimoRequerido(group) {
+            if (!group.required) return 0;
+            return Math.max(1, Number(group.min_seleccion) || 0);
+        }
+
+        function cantidadElegida(group, val) {
+            if (group.selection_type === 'single') return val ? 1 : 0;
+            return val && typeof val.size === 'number' ? val.size : 0;
+        }
+
+        function grupoIncompleto(group, val) {
+            return cantidadElegida(group, val) < minimoRequerido(group);
+        }
+
+        // No deshabilitamos "Agregar" (un botón muerto es el clásico "me
+        // trabé"): al intentar agregar sin completar, resaltamos el grupo.
+        function resaltarGruposFaltantes(groups) {
+            groups.forEach(g => {
+                const div = document.querySelector(`.bs-group[data-group-id="${g.id}"]`);
+                if (!div) return;
+                div.classList.add('bs-group-missing');
+                div.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            });
+        }
+
+        // Limpia el resaltado apenas el cliente completa el grupo
+        function validarBsBoton() {
+            if (!bsProducto) return;
+            const groups = Array.isArray(bsProducto.modifier_groups) ? bsProducto.modifier_groups : [];
+            bsSeleccion.forEach((val, groupId) => {
+                const group = groups.find(g => g.id === groupId);
+                if (!group) return;
+                const div = document.querySelector(`.bs-group[data-group-id="${group.id}"]`);
+                if (div && !grupoIncompleto(group, val)) div.classList.remove('bs-group-missing');
+            });
+        }
+
         function toggleBsOption(group, option, optDiv, isSingle) {
             if (isSingle) {
                 // Deseleccionar la anterior
@@ -1247,7 +1304,8 @@
                     }
                 }
                 // Si ya está seleccionada y es opcional (min 0), permitir deseleccionar
-                if (anteriorId === option.id && group.min_selections === 0) {
+                // Solo se puede deseleccionar si el grupo no es obligatorio
+                if (anteriorId === option.id && !group.required) {
                     bsSeleccion.set(group.id, null);
                     optDiv.classList.remove('selected');
                     optDiv.setAttribute('aria-checked', 'false');
@@ -1263,8 +1321,11 @@
                     optDiv.classList.remove('selected');
                     optDiv.setAttribute('aria-checked', 'false');
                 } else {
-                    if (group.max_selections > 0 && sel.size >= group.max_selections) {
-                        showToast(`Máximo ${group.max_selections} opciones permitidas`, 'warning');
+                    // El API manda max_seleccion (antes se leía max_selections,
+                    // que no existe: el máximo nunca se aplicaba)
+                    const maxSel = Number(group.max_seleccion) || 0;
+                    if (maxSel > 0 && maxSel < 99 && sel.size >= maxSel) {
+                        showToast(`Máximo ${maxSel} ${maxSel === 1 ? 'opción permitida' : 'opciones permitidas'}`, 'warning');
                         return;
                     }
                     sel.add(option.id);
@@ -1300,28 +1361,39 @@
 
         function agregarDesdeBottomSheet() {
             if (!bsProducto) return;
-            // Recolectar selecciones
+            // Recolectar selecciones y detectar grupos obligatorios sin completar
             const seleccionadas = [];
+            const faltantes = [];
             bsSeleccion.forEach((val, groupId) => {
                 const group = bsProducto.modifier_groups.find(g => g.id === groupId);
                 if (!group) return;
+                const opciones = Array.isArray(group.options) ? group.options : [];
+
+                if (grupoIncompleto(group, val)) { faltantes.push(group); return; }
+
                 if (group.selection_type === 'single') {
                     if (val) {
-                        const opt = group.options.find(o => o.id === val);
+                        const opt = opciones.find(o => o.id === val);
                         if (opt) seleccionadas.push({ group_id: groupId, group_nombre: group.nombre, id: opt.id, nombre: opt.nombre, price_delta: opt.price_delta });
                     }
                 } else {
-                    // Validar mínimo
-                    if (group.required && val.size < group.min_seleccion) {
-                        showToast(`Elegí al menos ${group.min_seleccion} en "${group.nombre}"`, 'warning');
-                        return;
-                    }
                     val.forEach(optId => {
-                        const opt = group.options.find(o => o.id === optId);
+                        const opt = opciones.find(o => o.id === optId);
                         if (opt) seleccionadas.push({ group_id: groupId, group_nombre: group.nombre, id: opt.id, nombre: opt.nombre, price_delta: opt.price_delta });
                     });
                 }
             });
+
+            // Falta un grupo obligatorio: NO se agrega. Avisamos y resaltamos,
+            // así el cliente ve qué tiene que elegir en vez de quedar trabado.
+            if (faltantes.length) {
+                resaltarGruposFaltantes(faltantes);
+                const g = faltantes[0];
+                showToast(g.selection_type === 'single'
+                    ? `Elegí una opción en "${g.nombre}"`
+                    : `Elegí al menos ${minimoRequerido(g)} en "${g.nombre}"`, 'warning');
+                return;
+            }
 
             // Clave estable: id + ids de opciones seleccionadas ordenadas
             const clave = seleccionadas.length > 0
@@ -1594,7 +1666,10 @@
             });
 
             // Detectar cuando hay un SW esperando activarse
-            navigator.serviceWorker.register('./sw.js').then((reg) => {
+            navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+                // Chequeamos sw.js en cada carga (sin caché HTTP) para detectar
+                // una versión nueva del sitio lo antes posible.
+                Promise.resolve(reg.update()).catch(() => {});
                 if (reg.waiting) showUpdateBanner(reg);
                 reg.addEventListener('updatefound', () => {
                     const newWorker = reg.installing;

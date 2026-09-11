@@ -1,0 +1,8 @@
+{
+  "name": "lomitos-arabes-fsa",
+  "private": true,
+  "description": "Landing page de pedidos con checkout por WhatsApp. El panel de admin y la API viven en admin/.",
+  "scripts": {
+    "test:e2e": "node tests/e2e/checkout.mjs"
+  }
+}

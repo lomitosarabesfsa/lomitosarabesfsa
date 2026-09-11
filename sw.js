@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lomitos-fsa-v18';
+const CACHE_NAME = 'lomitos-fsa-v19';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -34,8 +34,45 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — Network first para HTML (el cliente siempre recibe la versión nueva
-// al estar en línea), Cache first para assets (carga rápida y offline)
+// ── Helpers de estrategia ──────────────────────────────────────────────
+// Cache-first: instantáneo y disponible offline. Solo para assets que
+// prácticamente no cambian (imágenes, íconos, fuentes).
+function cacheFirst(request) {
+  return caches.match(request).then((cached) => {
+    if (cached) return cached;
+    return fetch(request).then((response) => {
+      if (response && response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+      }
+      return response;
+    });
+  });
+}
+
+// Network-first con timeout: el cliente recibe SIEMPRE el código nuevo
+// mientras tenga red, así el HTML nuevo nunca corre contra un app.js viejo
+// del caché. El caché queda solo como respaldo (red lenta u offline).
+function networkFirst(request, timeoutMs) {
+  const red = fetch(request).then((response) => {
+    if (response && response.ok) {
+      const clone = response.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+    }
+    return response;
+  });
+
+  // Si la red tarda demasiado, no colgamos la pantalla: tiramos de caché.
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('sw-timeout')), timeoutMs));
+
+  return Promise.race([red, timeout]).catch(() =>
+    caches.match(request).then((cached) => cached || red)
+  );
+}
+
+// Fetch — Network first para HTML y para el código (JS/CSS), así el cliente
+// siempre recibe la versión nueva estando en línea. Cache first solo para
+// assets que casi no cambian (imágenes, íconos, fuentes).
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -74,18 +111,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Assets: cache first, fallback to network
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
-      return fetch(event.request).then((networkResponse) => {
-        // Cache new assets dynamically
-        if (networkResponse.ok) {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return networkResponse;
-      });
-    })
-  );
+  // CÓDIGO (JS/CSS): network-first. Es la pieza clave para que un deploy
+  // llegue solo: el HTML nuevo nunca se ejecuta contra un app.js viejo
+  // guardado en caché (era la causa de que el checkout se trabara).
+  if (url.origin === self.location.origin && /\.(?:js|css)$/i.test(url.pathname)) {
+    event.respondWith(networkFirst(event.request, 3000));
+    return;
+  }
+
+  // Assets (imágenes, íconos, fuentes): cache first, fallback to network
+  event.respondWith(cacheFirst(event.request));
 });
