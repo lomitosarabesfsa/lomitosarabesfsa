@@ -327,7 +327,7 @@ function editarOptionInline(groupId, optionId) {
   } else {
     document.querySelectorAll('.mg-card').forEach(c => {
       const addBtn = c.querySelector('.mg-opt-add');
-      if (addBtn && addBtn.getAttribute('onclick')?.includes(`(${groupId},null)`)) {
+      if (addBtn && String(addBtn.dataset.groupId) === String(groupId) && !c.querySelector('.mg-opt-edit')) {
         const newRow = document.createElement('div'); newRow.className = 'mg-opt-row'; newRow.style.background = 'rgba(245,124,0,.05)';
         newRow.innerHTML = `<div class="mg-opt-edit"><input name="opt-name" value="" placeholder="Nombre de la opción"><input name="opt-price" type="number" value="0" placeholder="$0" min="0" step="100"></div>
           <button class="btn-mini" data-action="guardar-option-inline" data-group-id="${groupId}" data-option-id="null">💾</button>
@@ -544,14 +544,8 @@ document.addEventListener('click', (e) => {
     case 'logout':
       logout();
       break;
-    case 'abrir-producto':
-      abrirProducto();
-      break;
-    case 'abrir-categoria':
-      abrirCategoria();
-      break;
     case 'abrir-modifier-group':
-      abrirModifierGroup();
+      abrirModifierGroup(target.dataset.id ? parseInt(target.dataset.id) : null);
       break;
     case 'agregar-promo':
       agregarPromo();
