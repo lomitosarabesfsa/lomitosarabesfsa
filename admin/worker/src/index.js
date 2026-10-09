@@ -174,6 +174,12 @@ function validateCategoria(body) {
   return errors;
 }
 
+// D1/SQLite tira "UNIQUE constraint failed: <tabla>.<columna>" al violar un índice único.
+// Se traduce a 409 para no devolver un 500 opaco al panel.
+function esConflictoUnique(e) {
+  return /UNIQUE constraint failed/i.test(String((e && e.message) || e || ''));
+}
+
 function validateModifierGroup(body) {
   const errors = [];
   if (!body.nombre || typeof body.nombre !== 'string' || body.nombre.trim().length === 0) errors.push('nombre es obligatorio');
@@ -369,9 +375,28 @@ async function listarCategorias(envLocal) {
 async function crearCategoria(envLocal, body) {
   const errors = validateCategoria(body);
   if (errors.length) return jsonError(errors.join('; '), 400);
-  const res = await envLocal.DB.prepare('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)')
-    .bind(body.nombre.trim(), (body.icono || '🍽️').slice(0, 10), body.orden || 0).run();
-  return json({ ok: true, id: res.meta.last_row_id }, 201);
+  try {
+    const res = await envLocal.DB.prepare('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)')
+      .bind(body.nombre.trim(), (body.icono || '🍽️').slice(0, 10), body.orden || 0).run();
+    return json({ ok: true, id: res.meta.last_row_id }, 201);
+  } catch (e) {
+    if (esConflictoUnique(e)) return jsonError('Ya existe una categoría con ese nombre', 409);
+    throw e;
+  }
+}
+
+async function actualizarCategoria(envLocal, id, body) {
+  const errors = validateCategoria(body);
+  if (errors.length) return jsonError(errors.join('; '), 400);
+  try {
+    const res = await envLocal.DB.prepare('UPDATE categorias SET nombre = ?, icono = ?, orden = ? WHERE id = ?')
+      .bind(body.nombre.trim(), (body.icono || '🍽️').slice(0, 10), body.orden || 0, id).run();
+    if (!res.meta.changes) return jsonError('Categoría no encontrada', 404);
+    return json({ ok: true });
+  } catch (e) {
+    if (esConflictoUnique(e)) return jsonError('Ya existe una categoría con ese nombre', 409);
+    throw e;
+  }
 }
 
 async function eliminarCategoria(envLocal, id) {
@@ -559,8 +584,10 @@ export default {
         if (request.method === 'POST') return applyCors(await crearCategoria(envLocal, await request.json()), request);
       }
       const catMatch = path.match(/^\/api\/admin\/categorias\/(\d+)$/);
-      if (catMatch && request.method === 'DELETE') {
-        return applyCors(await eliminarCategoria(envLocal, catMatch[1]), request);
+      if (catMatch) {
+        const id = catMatch[1];
+        if (request.method === 'PUT') return applyCors(await actualizarCategoria(envLocal, id, await request.json()), request);
+        if (request.method === 'DELETE') return applyCors(await eliminarCategoria(envLocal, id), request);
       }
 
       // Modifier Groups

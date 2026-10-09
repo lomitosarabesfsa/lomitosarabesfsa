@@ -82,7 +82,7 @@ function mockR2() {
 
 // ---------- Helper ----------
 
-async function makeRequest(path, method = 'GET', body = null, headers = {}) {
+async function makeRequest(path, method = 'GET', body = null, headers = {}, env = mockEnv()) {
   const url = `https://lomitosarabesfsa.pages.dev${path}`;
   const opts = { method, headers: {} };
   if (body) {
@@ -90,7 +90,7 @@ async function makeRequest(path, method = 'GET', body = null, headers = {}) {
     opts.body = JSON.stringify(body);
   }
   Object.assign(opts.headers, headers);
-  return worker.fetch(new Request(url, opts), mockEnv(), {});
+  return worker.fetch(new Request(url, opts), env, {});
 }
 
 function mockEnv() {
@@ -102,6 +102,19 @@ function mockEnv() {
     ADMIN_PASS: 'testpass123',
     R2_PUBLIC_URL: 'https://pub-test.r2.dev',
   };
+}
+
+// Env donde el statement que matchea `matcher(sql)` cambia su comportamiento:
+// permite simular errores de D1 (índice único) y updates que no tocan filas.
+function envConDb(matcher, runImpl) {
+  const env = mockEnv();
+  const prepareOriginal = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = (sql) => {
+    const stmt = prepareOriginal(sql);
+    if (matcher(sql)) stmt.run = runImpl;
+    return stmt;
+  };
+  return env;
 }
 
 // ---------- Tests ----------
@@ -262,6 +275,57 @@ describe('CRUD Categorías', () => {
       icono: '🌮',
     }, { Authorization: `Bearer ${token}` });
     expect(res.status).toBe(400);
+  });
+
+  it('debería actualizar una categoría con datos válidos', async () => {
+    const res = await makeRequest('/api/admin/categorias/1', 'PUT', {
+      nombre: 'Lomitos Actualizado', icono: '🌯', orden: 3,
+    }, { Authorization: `Bearer ${token}` });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+  });
+
+  it('debería rechazar la actualización sin nombre', async () => {
+    const res = await makeRequest('/api/admin/categorias/1', 'PUT', {
+      icono: '🌯',
+    }, { Authorization: `Bearer ${token}` });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toContain('nombre');
+  });
+
+  it('debería exigir token para actualizar', async () => {
+    const res = await makeRequest('/api/admin/categorias/1', 'PUT', { nombre: 'X' });
+    expect(res.status).toBe(401);
+  });
+
+  it('debería devolver 404 al actualizar una categoría inexistente', async () => {
+    const env = envConDb((sql) => /UPDATE categorias/i.test(sql), async () => ({ meta: { changes: 0 } }));
+    const res = await makeRequest('/api/admin/categorias/999', 'PUT', { nombre: 'Fantasma' }, { Authorization: `Bearer ${token}` }, env);
+    expect(res.status).toBe(404);
+    const data = await res.json();
+    expect(data.error).toContain('no encontrada');
+  });
+
+  it('debería devolver 409 al actualizar con un nombre ya usado', async () => {
+    const env = envConDb((sql) => /UPDATE categorias/i.test(sql), async () => {
+      throw new Error('D1_ERROR: UNIQUE constraint failed: categorias.nombre');
+    });
+    const res = await makeRequest('/api/admin/categorias/1', 'PUT', { nombre: 'Bebidas' }, { Authorization: `Bearer ${token}` }, env);
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error).toContain('Ya existe');
+  });
+
+  it('debería devolver 409 al crear con un nombre ya usado', async () => {
+    const env = envConDb((sql) => /INSERT INTO categorias/i.test(sql), async () => {
+      throw new Error('D1_ERROR: UNIQUE constraint failed: categorias.nombre');
+    });
+    const res = await makeRequest('/api/admin/categorias', 'POST', { nombre: 'Bebidas' }, { Authorization: `Bearer ${token}` }, env);
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error).toContain('Ya existe');
   });
 });
 

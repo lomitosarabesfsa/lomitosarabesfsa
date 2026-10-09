@@ -40,12 +40,15 @@ function clearSectionError(sectionId) {
   if (el) el.innerHTML = '';
 }
 
-// Loading state: desactivar botón mientras se procesa
+// Loading state: desactivar botón mientras se procesa.
+// El label se captura ANTES de reemplazarlo, así el botón vuelve a su texto
+// original aunque el guardado falle.
 async function withLoading(btnId, fn) {
   const btn = $(btnId);
+  const label = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
   try { await fn(); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = btn.dataset.original || btn.textContent.replace('Guardando...',''); } }
+  finally { if (btn) { btn.disabled = false; btn.textContent = label; } }
 }
 
 // ============================================================
@@ -202,9 +205,11 @@ async function guardarProducto() {
   };
   if (!body.nombre) { toast('El nombre es obligatorio', true); return; }
   await withLoading('btn-guardar-producto', async () => {
-    if (editandoId) await api('/api/admin/productos/' + editandoId, 'PUT', body);
-    else await api('/api/admin/productos', 'POST', body);
-    toast('Producto guardado ✓'); cerrarModal(); await cargarTodo();
+    try {
+      if (editandoId) await api('/api/admin/productos/' + editandoId, 'PUT', body);
+      else await api('/api/admin/productos', 'POST', body);
+      toast('Producto guardado ✓'); cerrarModal(); await cargarTodo();
+    } catch (e) { toast(e.message, true); }
   });
 }
 async function eliminarProducto(id) {
@@ -260,9 +265,11 @@ async function guardarCategoria(id) {
   const body = { nombre: $('cat-nombre').value.trim(), icono: $('cat-icono').value.trim() || '🍽️', orden: parseInt($('cat-orden').value,10)||0 };
   if (!body.nombre) { toast('El nombre es obligatorio', true); return; }
   await withLoading('btn-guardar-cat', async () => {
-    if (id) await api('/api/admin/categorias/' + id, 'PUT', body);
-    else await api('/api/admin/categorias', 'POST', body);
-    toast('Categoría guardada ✓'); cerrarModal(); await cargarTodo();
+    try {
+      if (id) await api('/api/admin/categorias/' + id, 'PUT', body);
+      else await api('/api/admin/categorias', 'POST', body);
+      toast('Categoría guardada ✓'); cerrarModal(); await cargarTodo();
+    } catch (e) { toast(e.message, true); }
   });
 }
 
@@ -397,9 +404,11 @@ async function guardarModifierGroup() {
   };
   if (!body.nombre) { toast('El nombre es obligatorio', true); return; }
   await withLoading('btn-guardar-mg', async () => {
-    if (editandoGroupId) await api('/api/admin/modifier-groups/' + editandoGroupId, 'PUT', body);
-    else await api('/api/admin/modifier-groups', 'POST', body);
-    toast('Grupo guardado ✓'); cerrarModal(); await cargarTodo();
+    try {
+      if (editandoGroupId) await api('/api/admin/modifier-groups/' + editandoGroupId, 'PUT', body);
+      else await api('/api/admin/modifier-groups', 'POST', body);
+      toast('Grupo guardado ✓'); cerrarModal(); await cargarTodo();
+    } catch (e) { toast(e.message, true); }
   });
 }
 async function eliminarModifierGroup(id) {
