@@ -19,6 +19,19 @@
     <meta name="twitter:image" content="https://lomitosarabesfsa.pages.dev/assets/background.jpeg">
     <meta name="theme-color" content="#F57C00">
     <meta name="google-site-verification" content="2R-Vm-4SmtY5lG5pTtzDYtoxjVfil7qvMNvJFb23N14" />
+
+    <!-- Tema antes del primer paint: si el sistema pide claro, no hay flash oscuro -->
+    <script>
+      (function () {
+        try {
+          var tema = localStorage.getItem('theme');
+          if (!tema) {
+            tema = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          }
+          document.documentElement.setAttribute('data-theme', tema);
+        } catch (e) { /* localStorage bloqueado: queda el tema por defecto */ }
+      })();
+    </script>
     
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z75FKBBJ44"></script>
@@ -83,8 +96,8 @@
     <nav id="navbar">
         <div class="nav-left">
             <a href="#" class="nav-logo">
-                <img src="./assets/logoheader.jpeg" alt="Lomito Arabe Logo" onerror="this.style.display='none'">
-                <span>LOMITO</span> ÁRABE FSA
+                <img src="./assets/logoheader.jpeg" alt="" onerror="this.style.display='none'">
+                <span class="nav-logo-text"><span>LOMITO</span> ÁRABE FSA</span>
             </a>
             <div class="status-badge cerrado" id="status-badge">
                 <span class="status-dot"></span>

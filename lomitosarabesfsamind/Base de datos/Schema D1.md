@@ -13,7 +13,7 @@
 CREATE TABLE IF NOT EXISTS categorias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL UNIQUE,
-  icono TEXT NOT NULL DEFAULT '🍽️',
+  icono TEXT NOT NULL DEFAULT '',            -- vacío = sin icono (la landing no dibuja el recuadro)
   orden INTEGER NOT NULL DEFAULT 0
 );
 ```
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS categorias (
 |-------|------|-------------|
 | `id` | INTEGER | PK autoincremental |
 | `nombre` | TEXT | Nombre único (ej: "Lomitos") |
-| `icono` | TEXT | Emoji del icono |
+| `icono` | TEXT | Emoji del icono. **Vacío = sin icono**: la landing muestra la categoría con sólo su nombre (antes el default `🍽️` repetía el mismo plato en todas) |
 | `orden` | INTEGER | Posición en el menú |
 
 ---

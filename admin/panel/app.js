@@ -228,7 +228,9 @@ function renderCategorias() {
   categorias.forEach(c => {
     const n = productos.filter(p => p.categoria_id === c.id).length;
     const div = document.createElement('div'); div.className = 'card';
-    div.innerHTML = `<div style="font-size:1.6rem">${escapeHtml(c.icono)}</div>
+    // Sin icono cargado la lista muestra un guion, no un emoji de relleno
+    const iconoCard = c.icono ? escapeHtml(c.icono) : '<span style="opacity:.35">—</span>';
+    div.innerHTML = `<div style="font-size:1.6rem">${iconoCard}</div>
       <div class="info"><h3>${escapeHtml(c.nombre)}</h3><div class="meta">${n} producto(s) · Orden: ${c.orden || 0}</div></div>
       <div class="actions">
         <button class="btn-mini" data-action="abrir-categoria" data-id="${c.id}">Editar</button>
@@ -239,7 +241,7 @@ function renderCategorias() {
 }
 
 function abrirCategoria(id = null) {
-  let nombre='', icono='🍽️', orden=0;
+  let nombre='', icono='', orden=0;
   if (id) {
     const c = categorias.find(x => x.id === id);
     if (!c) return;
@@ -250,7 +252,7 @@ function abrirCategoria(id = null) {
     <h3>${id ? 'Editar categoría' : 'Nueva categoría'}</h3>
     <div class="field"><label>Nombre *</label><input type="text" id="cat-nombre" value="${escapeHtml(nombre)}"></div>
     <div class="field-row">
-      <div class="field"><label>Icono (emoji)</label><input type="text" id="cat-icono" value="${escapeHtml(icono)}" maxlength="4"></div>
+      <div class="field"><label>Icono (emoji)</label><input type="text" id="cat-icono" value="${escapeHtml(icono)}" maxlength="4" placeholder="🌯"><div style="color:var(--muted);font-size:.75rem;margin-top:4px">Vacío = la categoría se muestra sin icono en la web</div></div>
       <div class="field"><label>Orden</label><input type="number" id="cat-orden" value="${orden}" min="0"></div>
     </div>
     <div class="actions">
@@ -262,7 +264,7 @@ function abrirCategoria(id = null) {
 }
 
 async function guardarCategoria(id) {
-  const body = { nombre: $('cat-nombre').value.trim(), icono: $('cat-icono').value.trim() || '🍽️', orden: parseInt($('cat-orden').value,10)||0 };
+  const body = { nombre: $('cat-nombre').value.trim(), icono: $('cat-icono').value.trim(), orden: parseInt($('cat-orden').value,10)||0 };
   if (!body.nombre) { toast('El nombre es obligatorio', true); return; }
   await withLoading('btn-guardar-cat', async () => {
     try {

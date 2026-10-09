@@ -6,7 +6,7 @@ El archivo `admin/seed.sql` inserta **13 productos** en **4 categorías**.
 
 ---
 
-## 🥙 Lomitos (categoría 1)
+## 🌯 Lomitos (categoría 1)
 
 | ID | Nombre | Descripción | Precio |
 |----|--------|-------------|--------|
@@ -20,7 +20,7 @@ El archivo `admin/seed.sql` inserta **13 productos** en **4 categorías**.
 | 8 | Arabe De Remolacha Carne | 200g De Carne,Jamon,Queso,180g De Verduras + Salsa De Ajo = Kg 850 | $15.000 |
 | 9 | Arabe De Remolacha Pollo | 200g De Pollo,Jamon,Queso,180g De Verduras + Salsa De Ajo = Kg 850 | $13.000 |
 
-## 🍽️ Oportunidad Limitada (categoría 2)
+## 🔥 Oportunidad Limitada (categoría 2)
 
 | ID | Nombre | Descripción | Precio |
 |----|--------|-------------|--------|
@@ -33,7 +33,7 @@ El archivo `admin/seed.sql` inserta **13 productos** en **4 categorías**.
 | 11 | Coca 1 L | $3.000 |
 | 12 | Sprite 1L | $3.000 |
 
-## 🍽️ Aderezos (categoría 4)
+## 🧄 Aderezos (categoría 4)
 
 | ID | Nombre | Precio |
 |----|--------|--------|

@@ -75,7 +75,11 @@
         //  TEMA (LIGHT/DARK)
         // ============================================================
         function loadTheme() {
-            const saved = localStorage.getItem('theme') || 'dark';
+            // Sin preferencia guardada se respeta la del sistema (el script del <head>
+            // ya aplicó el tema antes del primer paint, así no hay flash)
+            const guardado = localStorage.getItem('theme');
+            const prefiereClaro = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches;
+            const saved = guardado || (prefiereClaro ? 'light' : 'dark');
             document.documentElement.setAttribute('data-theme', saved);
             updateThemeIcon(saved);
         }
@@ -256,7 +260,9 @@
             categorias = new Map();
             if (!data || !Array.isArray(data.categorias)) return;
             data.categorias.forEach(cat => {
-                const icono = cat.icono || '🍽️';
+                // Sólo el icono que el admin haya cargado: sin icono no dibujamos recuadro
+                // (antes las 5 categorías mostraban el mismo 🍽️ de relleno)
+                const icono = (cat.icono || '').trim();
                 categorias.set(cat.nombre, { icono, count: cat.productos.length });
                 cat.productos.forEach(p => {
                     productosDB.push({
@@ -298,7 +304,11 @@
             const container = document.getElementById('carta-container');
             const chipsBar = document.getElementById('carta-chips');
             container.innerHTML = '';
-            if (chipsBar) chipsBar.innerHTML = '';
+            // Vaciamos SÓLO el carril de chips: vaciar la barra entera destruía
+            // las flechas de desplazamiento y el listener que las gobernaba
+            let chipsScroll = chipsBar ? chipsBar.querySelector('.carta-chips-scroll') : null;
+            if (chipsScroll) chipsScroll.innerHTML = '';
+            else if (chipsBar) chipsBar.innerHTML = '';
 
             if (categorias.size === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 40px 0;">No hay productos disponibles por ahora. Volvé más tarde 👋</p>';
@@ -312,18 +322,28 @@
                 trackEvent('ver_carta', { categorias: categorias.size, productos: productosDB.length });
             }
 
-            const chipsScroll = document.createElement('div');
-            chipsScroll.className = 'carta-chips-scroll';
+            if (!chipsScroll) {
+                chipsScroll = document.createElement('div');
+                chipsScroll.className = 'carta-chips-scroll';
+                chipsScroll.id = 'carta-chips-scroll';
+                const flechaDer = chipsBar ? chipsBar.querySelector('#nav-arrow-right') : null;
+                if (flechaDer) chipsBar.insertBefore(chipsScroll, flechaDer);
+                else if (chipsBar) chipsBar.appendChild(chipsScroll);
+            }
+            // El carril también puede venir del HTML (esqueletos): rol y etiqueta
+            // se aseguran siempre, no sólo cuando lo creamos nosotros
+            chipsScroll.setAttribute('role', 'group');
             chipsScroll.setAttribute('aria-label', 'Categorías del menú');
 
             // Chip "Todos" (sin filtro): se ven todas las categorías apiladas
             const chipTodos = document.createElement('button');
             chipTodos.type = 'button';
             chipTodos.className = 'carta-chip active';
+            chipTodos.setAttribute('aria-pressed', 'true');
             chipTodos.dataset.todos = '';
             chipTodos.setAttribute('aria-label', 'Ver todas las categorías');
             chipTodos.innerHTML = `Todos`;
-            chipTodos.addEventListener('click', () => verTodos(chipTodos));
+            chipTodos.addEventListener('click', () => verTodos());
             chipsScroll.appendChild(chipTodos);
 
             let index = 0;
@@ -337,6 +357,7 @@
                 const chip = document.createElement('button');
                 chip.type = 'button';
                 chip.className = 'carta-chip';
+                chip.setAttribute('aria-pressed', 'false');
                 chip.dataset.target = id;
                 chip.setAttribute('aria-label', `Ver categoría ${cat}`);
                 chip.innerHTML = `${escapeHtml(cat)}`;
@@ -348,10 +369,15 @@
                 section.className = `carta-section reveal active stagger-${(index % 3) + 1}`;
                 section.id = id;
                 section.setAttribute('aria-labelledby', `carta-titulo-${index}`);
+                const iconoHTML = data.icono
+                    ? `<span class="carta-section-icon" aria-hidden="true">${escapeHtml(data.icono)}</span>`
+                    : '';
+                // H3: las categorías viven dentro de la sección "Nuestro Menú" (H2),
+                // y los productos son H4 (antes se saltaba el nivel H3)
                 section.innerHTML = `
                     <div class="carta-section-header">
-                        <span class="carta-section-icon" aria-hidden="true">${escapeHtml(data.icono)}</span>
-                        <h2 class="carta-section-title" id="carta-titulo-${index}">${escapeHtml(cat)}</h2>
+                        ${iconoHTML}
+                        <h3 class="carta-section-title" id="carta-titulo-${index}">${escapeHtml(cat)}</h3>
                         <span class="carta-section-count">${prods.length} ${prods.length === 1 ? 'opción' : 'opciones'}</span>
                     </div>
                     <div class="carta-productos"></div>
@@ -366,16 +392,25 @@
                 index++;
             });
 
-            if (chipsBar) chipsBar.appendChild(chipsScroll);
             iniciarScrollSpy();
+            initFlechasChips();
         }
 
         // Filtro de categorías: null = todas visibles, 'carta-...' = solo esa categoría
         let filtroCategoria = null;
 
+        // Única fuente de verdad del chip iluminado: clase + estado accesible.
+        // Antes el estado activo sólo existía como color, así que un lector de
+        // pantalla no podía saber qué categoría estaba filtrada.
         function activarChip(chip) {
-            document.querySelectorAll('#carta-chips .carta-chip').forEach(c => c.classList.remove('active'));
-            if (chip) chip.classList.add('active');
+            document.querySelectorAll('#carta-chips .carta-chip').forEach(c => {
+                c.classList.remove('active');
+                c.setAttribute('aria-pressed', 'false');
+            });
+            if (chip) {
+                chip.classList.add('active');
+                chip.setAttribute('aria-pressed', 'true');
+            }
         }
 
         // Muestra una sección con entrada suave (fade + desliz sutil)
@@ -392,8 +427,9 @@
             const seccion = document.getElementById(id);
             if (!seccion) return;
             // Si la categoría ya estaba filtrada, el toque vuelve a "Todos" (toggle)
-            if (filtroCategoria === id && chip) {
-                verTodos(chip);
+            if (filtroCategoria === id) {
+                // Re-toque sobre la categoría ya filtrada: vuelve a "Todos"
+                verTodos();
                 return;
             }
             filtroCategoria = id;
@@ -406,11 +442,13 @@
             trackEvent('ver_categoria', { categoria: nombre });
         }
 
-        // Sin filtro: todas las categorías visibles de nuevo
-        function verTodos(chip) {
+        // Sin filtro: todas las categorías visibles de nuevo.
+        // El chip iluminado vuelve a ser "Todos": antes quedaba marcada la categoría
+        // que acababas de tocar, o sea la barra decía "Bebidas" mostrando todo el menú.
+        function verTodos() {
             filtroCategoria = null;
             document.querySelectorAll('#carta-container .carta-section').forEach(s => mostrarSeccion(s, true));
-            activarChip(chip);
+            activarChip(document.querySelector('#carta-chips .carta-chip[data-todos]'));
             const primera = document.querySelector('#carta-container .carta-section');
             if (primera) primera.scrollIntoView({ behavior: 'smooth', block: 'start' });
             trackEvent('ver_carta', { filtro: 'todos' });
@@ -436,13 +474,12 @@
                     if (!entry.isIntersecting) return;
                     const chip = chipPorSeccion[entry.target.id];
                     if (!chip) return;
-                    chips.forEach(c => c.classList.remove('active'));
                     // Sin filtro y en el inicio del menú (primera sección) → se ilumina "Todos"
                     if (!filtroCategoria && chipTodos && entry.target === secciones[0]) {
-                        chipTodos.classList.add('active');
+                        activarChip(chipTodos);
                         return;
                     }
-                    chip.classList.add('active');
+                    activarChip(chip);
                     // Centra el chip dentro de la barra manipulando scrollLeft directamente:
                     // scrollIntoView puede provocar saltos/bloqueos de scroll de página
                     // en Android cuando se dispara durante un gesto lento
@@ -467,8 +504,7 @@
                     if (secciones.length && chipTodos) {
                         const top = secciones[0].getBoundingClientRect().top;
                         if (top >= -80 && !chipTodos.classList.contains('active')) {
-                            chips.forEach(c => c.classList.remove('active'));
-                            chipTodos.classList.add('active');
+                            activarChip(chipTodos);
                             return;
                         }
                     }
@@ -476,8 +512,7 @@
                     const container = document.getElementById('carta-container');
                     if (!ultimo || !container || ultimo.classList.contains('active')) return;
                     if (container.getBoundingClientRect().bottom <= window.innerHeight + 4) {
-                        chips.forEach(c => c.classList.remove('active'));
-                        ultimo.classList.add('active');
+                        activarChip(ultimo);
                     }
                 };
                 // Throttle con rAF: el fallback hace lecturas de layout
@@ -1497,24 +1532,32 @@
             }
         }
 
-        // Detect scroll position to hide/show arrows
-        document.addEventListener('DOMContentLoaded', () => {
+        // Flechas del carril de chips: visibles sólo si hay algo que desplazar.
+        // Los elementos se consultan en cada llamada porque el carril se re-renderiza
+        // con el menú (antes se enganchaban una vez sobre nodos que luego se destruían).
+        function initFlechasChips() {
             const scrollContainer = document.getElementById('carta-chips-scroll');
             const leftArrow = document.getElementById('nav-arrow-left');
             const rightArrow = document.getElementById('nav-arrow-right');
-            
-            if(scrollContainer && leftArrow && rightArrow) {
-                const updateArrows = () => {
-                    leftArrow.classList.toggle('hidden', scrollContainer.scrollLeft <= 5);
-                    rightArrow.classList.toggle('hidden', scrollContainer.scrollLeft >= scrollContainer.scrollWidth - scrollContainer.clientWidth - 5);
-                };
-                
-                scrollContainer.addEventListener('scroll', updateArrows, {passive: true});
-                window.addEventListener('resize', updateArrows, {passive: true});
-                
-                // Init after slight delay to ensure elements are rendered
-                setTimeout(updateArrows, 500);
+            if (!scrollContainer || !leftArrow || !rightArrow) return;
+
+            const updateArrows = () => {
+                // Sin desborde no hay nada que desplazar: se ocultan las dos
+                const ocultas = scrollContainer.scrollWidth - scrollContainer.clientWidth <= 4;
+                leftArrow.classList.toggle('hidden', ocultas || scrollContainer.scrollLeft <= 5);
+                rightArrow.classList.toggle('hidden', ocultas || scrollContainer.scrollLeft >= scrollContainer.scrollWidth - scrollContainer.clientWidth - 5);
+            };
+            if (!scrollContainer.dataset.flechasListas) {
+                scrollContainer.dataset.flechasListas = '1';
+                scrollContainer.addEventListener('scroll', updateArrows, { passive: true });
+                window.addEventListener('resize', updateArrows, { passive: true });
+                window.addEventListener('load', updateArrows);
             }
+            updateArrows();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initFlechasChips();
 
             // Dynamically measure navbar height and set CSS variable
             // so .carta-chips sticky top never overlaps with the nav

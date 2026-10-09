@@ -3,16 +3,24 @@
            ============================================ */
         :root {
             --primary: #F57C00;
+            /* Naranja de marca cuando se usa como TEXTO: en claro se oscurece para pasar AA */
+            --primary-text: #F57C00;
             --secondary: #D84315;
             --tertiary: #FFB300;
-            --action-primary: #FF6F61;
+            /* Coral de acciones: oscurecido porque el blanco encima de #FF6F61 daba 2.73:1 */
+            --action-primary: #E24B3D;
+            /* Verde de acción para botones con texto blanco (5.5:1). --whatsapp queda para la marca del canal */
+            --cta-action: #0F766E;
+            --overlay-bg: rgba(18, 18, 18, 0.97);
+            --cart-badge-text: #00695C;
             --bg: #121212;
             --surface: #1E1E1E;
             --surface-hover: #2a2a2a;
             --text: #FFFFFF;
             --text-muted: #B0BEC5;
             --whatsapp: #25D366;
-            --danger: #ef4444;
+            /* Rojo más claro: sobre la píldora roja del badge daba 4.28:1 (AA pide 4.5) */
+            --danger: #F87171;
             --warning: #f59e0b;
             --success: #22c55e;
             --radius: 20px;
@@ -26,7 +34,19 @@
             --surface: #FFFFFF;
             --surface-hover: #f0f0f0;
             --text: #1a1a1a;
-            --text-muted: #6B7280;
+            /* #6B7280 daba 4.43:1 sobre #F5F5F5 (debajo de AA): ahora 6.9:1 */
+            --text-muted: #4B5563;
+            /* Naranja de marca como texto en claro: 5.1:1 sobre #F5F5F5 y 4.6:1 sobre las
+               píldoras naranjas (antes 2.48:1) */
+            --primary-text: #B4440A;
+            /* El dorado de precios aclarado sobre fondo claro daba 1.65:1: acá va oscurecido */
+            --tertiary: #8A5300;
+            /* Rojos y verdes de texto/badge sobre claro: el tono original quedaba
+               entre 1.8:1 y 3.45:1 sobre las píldoras del badge */
+            --danger: #A11616;
+            --success: #166534;
+            --overlay-bg: rgba(245, 245, 245, 0.97);
+            --cart-badge-text: #00796B;
         }
 
         [data-theme="light"] .hero-bg {
@@ -45,6 +65,10 @@
 
         [data-theme="light"] .ig-link {
             background: rgba(0, 0, 0, 0.06);
+        }
+
+        [data-theme="light"] .weight-badge {
+            background: #FFFFFF;
         }
 
         [data-theme="light"] .cart-item {
@@ -91,6 +115,12 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        /* Anillo de foco único para todo el sitio (teclado / switch) */
+        :focus-visible {
+            outline: 3px solid var(--primary-text);
+            outline-offset: 2px;
         }
 
         html {
@@ -159,6 +189,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 12px;
             background: rgba(18, 18, 18, 0.85);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -171,16 +202,29 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            /* El logo se encoge antes que los controles: el menú y el toggle
+               tienen que quedar siempre alcanzables en pantallas angostas */
+            min-width: 0;
+            flex: 1 1 auto;
         }
 
         .nav-logo {
             font-size: 24px;
-            color: var(--primary);
+            color: var(--primary-text);
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 12px;
             text-shadow: 0 0 15px rgba(245, 124, 0, 0.4);
+            min-width: 0;
+            min-height: 44px;
+        }
+
+        .nav-logo-text {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .nav-logo img {
@@ -253,6 +297,7 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            flex-shrink: 0;
         }
 
         .nav-links {
@@ -271,7 +316,7 @@
         }
 
         .nav-links a:hover {
-            color: var(--primary);
+            color: var(--primary-text);
         }
 
         .ig-link {
@@ -316,38 +361,40 @@
             background: none;
             border: none;
             cursor: pointer;
-            width: 30px;
-            height: 24px;
+            /* 44x44: área táctil mínima recomendada (antes 30x24) */
+            width: 44px;
+            height: 44px;
             position: relative;
             z-index: 1001;
+            flex-shrink: 0;
         }
 
         .hamburger span {
             display: block;
-            width: 100%;
+            width: 24px;
             height: 3px;
             background: var(--text);
             border-radius: 3px;
             transition: all 0.3s;
             position: absolute;
-            left: 0;
+            left: 10px;
         }
 
         .hamburger span:nth-child(1) {
-            top: 0;
-        }
-
-        .hamburger span:nth-child(2) {
             top: 10px;
         }
 
-        .hamburger span:nth-child(3) {
+        .hamburger span:nth-child(2) {
             top: 20px;
+        }
+
+        .hamburger span:nth-child(3) {
+            top: 30px;
         }
 
         .hamburger.active span:nth-child(1) {
             transform: rotate(45deg);
-            top: 10px;
+            top: 20px;
         }
 
         .hamburger.active span:nth-child(2) {
@@ -356,7 +403,7 @@
 
         .hamburger.active span:nth-child(3) {
             transform: rotate(-45deg);
-            top: 10px;
+            top: 20px;
         }
 
         /* Mobile Menu */
@@ -367,7 +414,8 @@
             left: 0;
             width: 100%;
             height: 100vh;
-            background: rgba(18, 18, 18, 0.97);
+            height: 100dvh;
+            background: var(--overlay-bg);
             backdrop-filter: blur(20px);
             z-index: 999;
             flex-direction: column;
@@ -395,7 +443,7 @@
         }
 
         .mobile-menu a:hover {
-            color: var(--primary);
+            color: var(--primary-text);
         }
 
         /* ============================================
@@ -449,6 +497,7 @@
         }
 
         .hero h1 span {
+            /* Sobre la imagen del hero el naranja vivo se lee mejor: no usa el token de texto */
             color: var(--primary);
         }
 
@@ -462,9 +511,11 @@
 
         .weight-badge {
             display: inline-block;
-            background: rgba(245, 124, 0, 0.2);
+            /* Fondo sólido: el texto va sobre la imagen del hero y con un velo
+               translúcido el contraste quedaba a merced de la foto (4.17:1) */
+            background: #121212;
             border: 1px solid var(--primary);
-            color: var(--primary);
+            color: var(--primary-text);
             padding: 8px 20px;
             border-radius: 50px;
             font-weight: 800;
@@ -519,7 +570,7 @@
 
         /* Título del formulario de checkout */
         .checkout-title {
-            color: var(--primary);
+            color: var(--primary-text);
             margin: 10px 0 5px;
         }
 
@@ -599,7 +650,7 @@
         }
 
         .section-title span {
-            color: var(--primary);
+            color: var(--primary-text);
         }
 
         .section-subtitle {
@@ -670,7 +721,7 @@
         .nav-arrow {
             background: var(--surface);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--primary);
+            color: var(--primary-text);
             width: 44px;
             height: 44px;
             border-radius: 50%;
@@ -697,6 +748,14 @@
             width: 0;
             margin: 0;
             border: none;
+        }
+
+        /* En táctil el swipe es la vía natural: las flechas sólo le robaban
+           88px de ancho a los chips (se veían 2 de 6 categorías). */
+        @media (hover: none), (pointer: coarse) {
+            .nav-arrow {
+                display: none;
+            }
         }
 
         .carta-chips-scroll {
@@ -756,7 +815,7 @@
         .carta-chip.active {
             background: var(--primary);
             color: #000;
-            border-color: var(--primary);
+            border-color: var(--primary-text);
             font-weight: 800;
             box-shadow: 0 6px 16px rgba(245, 124, 0, 0.4);
             transform: none;
@@ -847,7 +906,7 @@
             margin-left: auto;
             font-size: 0.72rem;
             font-weight: 800;
-            color: var(--primary);
+            color: var(--primary-text);
             background: rgba(245, 124, 0, 0.1);
             border: 1px solid rgba(245, 124, 0, 0.2);
             padding: 4px 12px;
@@ -926,7 +985,7 @@
             font-size: 0.68rem;
             font-weight: 700;
             text-transform: uppercase;
-            color: var(--primary);
+            color: var(--primary-text);
             background: rgba(245, 124, 0, 0.1);
             padding: 2px 10px;
             border-radius: 50px;
@@ -1171,7 +1230,7 @@
         .bs-option.selected .bs-radio,
         .bs-option.selected .bs-checkbox {
             background: var(--primary);
-            border-color: var(--primary);
+            border-color: var(--primary-text);
         }
 
         .bs-option.selected .bs-radio::after {
@@ -1401,7 +1460,7 @@
         }
 
         .cart-header h2 {
-            color: var(--primary);
+            color: var(--primary-text);
             font-size: 1.8rem;
             margin: 0;
         }
@@ -1554,7 +1613,7 @@
             background: rgba(255, 255, 255, 0.08);
             color: var(--text);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 12px;
+            padding: 14px;
             border-radius: var(--radius-sm);
             cursor: pointer;
             font-weight: 600;
@@ -1572,7 +1631,8 @@
 
         .checkout-btn {
             width: 100%;
-            background: var(--whatsapp);
+            /* Verde oscuro: el blanco encima del #25D366 de WhatsApp daba 1.98:1 */
+            background: var(--cta-action);
             color: white;
             border: none;
             padding: 16px;
@@ -1639,8 +1699,8 @@
         .form-group input:focus,
         .form-group select:focus,
         .form-group textarea:focus {
-            border-color: var(--primary);
-            outline: none;
+            border-color: var(--primary-text);
+            /* Sin 'outline: none': el foco debe verse también con teclado (ver :focus-visible) */
         }
 
         .form-row {
@@ -1760,7 +1820,7 @@
 
         .contact-info h3 {
             font-size: 2rem;
-            color: var(--primary);
+            color: var(--primary-text);
             margin-bottom: 25px;
         }
 
@@ -1878,9 +1938,9 @@
             position: absolute;
             top: -5px;
             right: -5px;
-            /* Blanco sobre turquesa: contraste máximo para el contador */
+            /* Blanco con turquesa oscuro: 5.3:1 (con #00BFA5 daba 2.33:1) */
             background: #FFF;
-            color: #00BFA5;
+            color: var(--cart-badge-text);
             width: 24px;
             height: 24px;
             border-radius: 50%;
@@ -1913,7 +1973,7 @@
         .footer-brand .footer-logo {
             font-family: 'Anton', sans-serif;
             font-size: 1.8rem;
-            color: var(--primary);
+            color: var(--primary-text);
             text-transform: uppercase;
             margin-bottom: 15px;
         }
@@ -1929,7 +1989,7 @@
         }
 
         .footer-col h4 {
-            color: var(--primary);
+            color: var(--primary-text);
             font-family: 'Anton', sans-serif;
             font-size: 1.1rem;
             text-transform: uppercase;
@@ -1949,10 +2009,13 @@
             text-decoration: none;
             font-size: 0.9rem;
             transition: color 0.3s;
+            /* 25px de alto: los links sueltos de 17px no llegan al mínimo de área táctil */
+            display: inline-block;
+            padding: 4px 0;
         }
 
         .footer-col ul li a:hover {
-            color: var(--primary);
+            color: var(--primary-text);
         }
 
         .footer-col .hours-item {
@@ -1976,8 +2039,9 @@
         }
 
         .footer-social a {
-            width: 40px;
-            height: 40px;
+            /* 44x44: área táctil mínima recomendada (antes 40x40) */
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.05);
             display: flex;
@@ -2113,7 +2177,7 @@
 
         .checkout-step.done .cs-ico {
             background: var(--primary);
-            border-color: var(--primary);
+            border-color: var(--primary-text);
             color: #000;
         }
 
@@ -2126,8 +2190,8 @@
         }
 
         .checkout-step.active .cs-ico {
-            border-color: var(--primary);
-            color: var(--primary);
+            border-color: var(--primary-text);
+            color: var(--primary-text);
             box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.25);
         }
 
@@ -2216,16 +2280,16 @@
         }
 
         .option-card:focus-within {
-            border-color: var(--primary);
+            border-color: var(--primary-text);
         }
 
         .option-card.checked {
-            border-color: var(--primary);
+            border-color: var(--primary-text);
             background: rgba(245, 124, 0, 0.1);
         }
 
         .option-card input {
-            accent-color: var(--primary);
+            accent-color: var(--primary-text);
             width: 17px;
             height: 17px;
             flex-shrink: 0;
@@ -2242,7 +2306,7 @@
         }
 
         [data-theme="light"] .option-card.checked {
-            border-color: var(--primary);
+            border-color: var(--primary-text);
             background: rgba(245, 124, 0, 0.08);
         }
 
@@ -2380,8 +2444,16 @@
                 top: var(--nav-height, 80px);
             }
 
+            nav {
+                padding: 12px 16px;
+            }
+
             .nav-links {
                 display: none;
+            }
+
+            .nav-right {
+                gap: 8px;
             }
 
             .hamburger {
@@ -2393,8 +2465,8 @@
             }
 
             .status-badge {
-                font-size: 0.6rem;
-                padding: 4px 10px;
+                font-size: 0.75rem;
+                padding: 5px 10px;
             }
 
             .hero h1 {
@@ -2473,6 +2545,30 @@
             .nav-logo img {
                 width: 35px;
                 height: 35px;
+            }
+        }
+
+        /* En pantallas angostas el badge pierde el texto para no empujar
+           el menú y el toggle fuera de la pantalla. El texto sigue estando
+           para lectores de pantalla (no se usa display:none). */
+        @media (max-width: 520px) {
+            .status-badge {
+                padding: 6px 10px;
+            }
+
+            .status-badge #status-text {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip-path: inset(50%);
+                white-space: nowrap;
+            }
+
+            .nav-logo {
+                font-size: 17px;
             }
         }
 

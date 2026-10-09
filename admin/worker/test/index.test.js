@@ -277,6 +277,41 @@ describe('CRUD Categorías', () => {
     expect(res.status).toBe(400);
   });
 
+  // El 🍽️ por defecto hacía que todas las categorías se vieran iguales en la
+  // landing; sin icono se guarda vacío y la web no dibuja el recuadro.
+  function envCapturandoCategoria() {
+    const env = mockEnv();
+    const prepareOriginal = env.DB.prepare.bind(env.DB);
+    env._capturado = null;
+    env.DB.prepare = (sql) => {
+      const stmt = prepareOriginal(sql);
+      if (/INSERT INTO categorias|UPDATE categorias/i.test(sql)) {
+        const bindOriginal = stmt.bind.bind(stmt);
+        stmt.bind = (...params) => { env._capturado = params; return bindOriginal(...params); };
+      }
+      return stmt;
+    };
+    return env;
+  }
+
+  it('debería guardar icono vacío si no se manda icono', async () => {
+    const env = envCapturandoCategoria();
+    const res = await makeRequest('/api/admin/categorias', 'POST', {
+      nombre: 'Sin Icono Test',
+    }, { Authorization: `Bearer ${token}` }, env);
+    expect(res.status).toBe(201);
+    expect(env._capturado[1]).toBe('');
+  });
+
+  it('debería limpiar el icono al actualizar sin icono', async () => {
+    const env = envCapturandoCategoria();
+    const res = await makeRequest('/api/admin/categorias/1', 'PUT', {
+      nombre: 'Lomitos Sin Icono', orden: 1,
+    }, { Authorization: `Bearer ${token}` }, env);
+    expect(res.status).toBe(200);
+    expect(env._capturado[1]).toBe('');
+  });
+
   it('debería actualizar una categoría con datos válidos', async () => {
     const res = await makeRequest('/api/admin/categorias/1', 'PUT', {
       nombre: 'Lomitos Actualizado', icono: '🌯', orden: 3,

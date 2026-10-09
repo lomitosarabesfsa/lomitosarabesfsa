@@ -377,7 +377,7 @@ async function crearCategoria(envLocal, body) {
   if (errors.length) return jsonError(errors.join('; '), 400);
   try {
     const res = await envLocal.DB.prepare('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)')
-      .bind(body.nombre.trim(), (body.icono || '🍽️').slice(0, 10), body.orden || 0).run();
+      .bind(body.nombre.trim(), String(body.icono ?? '').trim().slice(0, 10), body.orden || 0).run();
     return json({ ok: true, id: res.meta.last_row_id }, 201);
   } catch (e) {
     if (esConflictoUnique(e)) return jsonError('Ya existe una categoría con ese nombre', 409);
@@ -390,7 +390,7 @@ async function actualizarCategoria(envLocal, id, body) {
   if (errors.length) return jsonError(errors.join('; '), 400);
   try {
     const res = await envLocal.DB.prepare('UPDATE categorias SET nombre = ?, icono = ?, orden = ? WHERE id = ?')
-      .bind(body.nombre.trim(), (body.icono || '🍽️').slice(0, 10), body.orden || 0, id).run();
+      .bind(body.nombre.trim(), String(body.icono ?? '').trim().slice(0, 10), body.orden || 0, id).run();
     if (!res.meta.changes) return jsonError('Categoría no encontrada', 404);
     return json({ ok: true });
   } catch (e) {

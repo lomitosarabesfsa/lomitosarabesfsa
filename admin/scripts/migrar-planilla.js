@@ -67,7 +67,7 @@ for (let i = 1; i < filas.length; i++) {
   if (v.length < 4) continue;
   const cat = v[0] || 'Otros';
   if (!categorias.has(cat)) {
-    categorias.set(cat, { icono: (v[5] && v[5].trim()) || '🍽️', productos: [] });
+    categorias.set(cat, { icono: (v[5] && v[5].trim()) || '', productos: [] });
   }
   let stock = -1;
   if (v[4] !== undefined && v[4] !== '') {

@@ -16,7 +16,7 @@ Devuelve el menú completo para la landing page.
     {
       "id": 1,
       "nombre": "Lomitos",
-      "icono": "🍽️",
+      "icono": "🌯",
       "productos": [
         {
           "id": 1,
@@ -139,7 +139,14 @@ Crea una categoría.
 
 **Request**:
 ```json
-{ "nombre": "Nueva Categoría", "icono": "🍽️", "orden": 5 }
+{ "nombre": "Nueva Categoría", "icono": "🌯", "orden": 5 }
+```
+
+`icono` es opcional: si se omite o se manda vacío, la categoría se guarda sin icono
+y la landing la muestra sólo con su nombre (ya no se rellena con `🍽️`).
+
+```json
+{ "nombre": "Nueva Categoría", "icono": "", "orden": 5 }
 ```
 
 #### `DELETE /api/admin/categorias/:id`

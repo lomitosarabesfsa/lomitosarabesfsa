@@ -8,7 +8,7 @@
 CREATE TABLE IF NOT EXISTS categorias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL UNIQUE,
-  icono TEXT NOT NULL DEFAULT '🍽️',
+  icono TEXT NOT NULL DEFAULT '',            -- vacío = sin icono (la landing no dibuja recuadro)
   orden INTEGER NOT NULL DEFAULT 0
 );
 
