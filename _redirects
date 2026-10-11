@@ -1,0 +1,18 @@
+# ============================================================
+#  Redirecciones de Cloudflare Pages
+#
+#  Este archivo se sube junto con el sitio (el deploy es
+#  `npx wrangler pages deploy .` desde la raíz del repo), así que
+#  las reglas de abajo se aplican en https://lomitosarabesfsa.pages.dev
+#
+#  El panel de administración vive en /admin/panel/ (carpeta real).
+#  /panel/ NO existe como carpeta y el proyecto tiene el fallback SPA
+#  activado, así que sin esta regla cualquier ruta inexistente —/panel/
+#  incluida— devolvía la landing. Las reglas de _redirects se aplican
+#  siempre: no dependen de que exista un archivo en la ruta pedida.
+# ============================================================
+
+/panel          /admin/panel/  302
+/panel/         /admin/panel/  302
+/admin          /admin/panel/  302
+/admin/         /admin/panel/  302

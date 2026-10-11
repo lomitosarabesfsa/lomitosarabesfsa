@@ -2,7 +2,11 @@
 
 ## Acceso
 
-Abrir `admin/panel/index.html` desde tu PC en el navegador.
+**En línea**: `https://lomitosarabesfsa.pages.dev/panel/` — la ruta corta `/panel/` redirige
+a `/admin/panel/` (regla en `_redirects`), así que las dos direcciones abren el mismo panel.
+Además `/admin/` también lleva al panel.
+
+**Local**: abrir `admin/panel/index.html` desde tu PC en el navegador.
 
 **Credenciales**:
 ```
@@ -68,7 +72,7 @@ En el modal de la categoría, sección **Campaña**:
 
 ## Flujo típico de uso
 
-1. Abrir `admin/panel/index.html`
+1. Abrir `admin/panel/index.html` (o `https://lomitosarabesfsa.pages.dev/panel/`)
 2. Iniciar sesión
 3. Modificar productos (precios, fotos, stock)
 4. Actualizar horarios si es necesario

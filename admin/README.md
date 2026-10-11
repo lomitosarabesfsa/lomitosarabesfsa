@@ -17,7 +17,7 @@ Admin panel (estático, local) ──▶ /api/admin/* ──┘        │
 |----------|-----|
 | Landing | `https://lomitosarabesfsa.pages.dev` |
 | API | `https://lomitos-api.gapersingula97.workers.dev` |
-| Panel Admin | Abrir `admin/panel/index.html` (local) |
+| Panel Admin | `https://lomitosarabesfsa.pages.dev/panel/` · o abrir `admin/panel/index.html` (local) |
 
 Costo: **$0/mes** (planes gratuitos de Cloudflare).
 
@@ -111,7 +111,8 @@ Uploading... (0/N)
 Abrir `https://lomitosarabesfsa.pages.dev` en el navegador. La landing carga los menús desde la API.
 
 ### 10. Publicar el panel admin
-Abrir `admin/panel/index.html` directamente en el navegador (es un archivo estático local).
+En línea: `https://lomitosarabesfsa.pages.dev/panel/` (también `/admin/panel/`), que es la misma carpeta `admin/panel/` que sube el deploy de Pages.
+Local: abrir `admin/panel/index.html` directamente en el navegador (es un archivo estático local).
 El panel ya apunta al Worker: `https://lomitos-api.gapersingula97.workers.dev`.
 **Entrar por primera vez con `admin / admin123` y cambiá la clave de inmediato** (secrets ADMIN_USER/ADMIN_PASS).
 

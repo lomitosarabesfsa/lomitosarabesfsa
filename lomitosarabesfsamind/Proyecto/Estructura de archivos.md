@@ -10,6 +10,7 @@ lomitosarabesfsa/
 ├── sitemap.xml                   # SEO: mapa del sitio
 ├── .env                          # ⚠️ Variables de entorno (NO subir a git)
 ├── .gitignore                    # Archivos ignorados por Git
+├── _redirects                    # Cloudflare Pages: /panel/ y /admin/ → /admin/panel/
 │
 ├── assets/                       # Imágenes estáticas
 │   ├── background.jpeg           # Imagen de fondo
