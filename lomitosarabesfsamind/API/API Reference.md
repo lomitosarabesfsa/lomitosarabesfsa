@@ -15,8 +15,12 @@ Devuelve el menú completo para la landing page.
   "categorias": [
     {
       "id": 1,
-      "nombre": "Lomitos",
-      "icono": "🌯",
+      "nombre": "Cajas Día de la Madre",
+      "icono": "💐",
+      "promocional": 1,
+      "temporal": 1,
+      "desde": "2026-10-16T00:00:00-03:00",
+      "hasta": "2026-10-18T23:59:00-03:00",
       "productos": [
         {
           "id": 1,
@@ -44,6 +48,18 @@ Devuelve el menú completo para la landing page.
   }
 }
 ```
+
+**Detalles de la respuesta**:
+
+- Las categorías salen ordenadas por `orden` (desempate estable por `id`), y **las que no están
+  vigentes no se publican**: una categoría `temporal` cuya ventana todavía no empezó
+  (programada) o ya terminó (vencida) queda fuera de la respuesta. Nunca se muestra una promo
+  vencida, aunque nadie se acuerde de apagarla.
+- `promocional`, `temporal`, `desde` y `hasta` son los metadatos de campaña: la landing los usa
+  para destacar la categoría y para correr el cronómetro ("⏳ Termina en 1d 4h").
+- Las categorías sin productos visibles no se dibujan en la web (sí vienen en el JSON).
+- El endpoint no se cachea (`/api/` siempre va a red), así que un cambio del panel se ve al
+  recargar.
 
 ---
 
@@ -132,7 +148,8 @@ Elimina un producto.
 ### Categorías
 
 #### `GET /api/admin/categorias`
-Lista todas las categorías.
+Lista **todas** las categorías, incluidas las programadas y las vencidas (el panel necesita
+poder corregirlas), cada una con `vigente: 1|0` ya resuelto para poder avisar en pantalla.
 
 #### `POST /api/admin/categorias`
 Crea una categoría.
@@ -149,8 +166,45 @@ y la landing la muestra sólo con su nombre (ya no se rellena con `🍽️`).
 { "nombre": "Nueva Categoría", "icono": "", "orden": 5 }
 ```
 
+**`orden` es una posición, no un número suelto.** Con `orden: 1` la categoría entra primera
+**y todas las demás corren un lugar**; sin `orden` la categoría va al final. La API deja
+siempre la secuencia en 1..N sin huecos ni empates (mismo criterio al editar con
+`PUT .../categorias/:id` y al borrar).
+
+**Categoría de campaña** (promocional y/o con vigencia):
+```json
+{
+  "nombre": "Cajas Día de la Madre",
+  "icono": "💐",
+  "orden": 1,
+  "promocional": 1,
+  "temporal": 1,
+  "desde": "2026-10-16T00:00:00-03:00",
+  "hasta": "2026-10-18T23:59:00-03:00"
+}
+```
+
+- `promocional` → la landing la destaca (badge 🔥, fondo y borde propios).
+- `temporal` + `hasta` → se publica sólo dentro de la ventana y la web le corre un cronómetro.
+- `hasta` es **obligatorio** si `temporal` es 1, y debe ser posterior a `desde`.
+- Errores: `400` con `una categoría temporal necesita fecha de fin (hasta)`,
+  `la fecha de fin debe ser posterior a la de inicio` o `hasta no es una fecha válida`.
+
+#### `PUT /api/admin/categorias/orden`
+Reordena todas las categorías de una sola vez (lo que usa el panel al arrastrar).
+
+**Request**:
+```json
+{ "ids": [8, 7, 5, 1] }
+```
+
+Los ids tienen que ser **exactamente** los de todas las categorías actuales: si falta uno,
+sobra o se repite, responde `409` y no toca nada (protege contra un panel desactualizado).
+
+**Response**: `{ "ok": true }`
+
 #### `DELETE /api/admin/categorias/:id`
-Elimina una categoría (y sus productos por CASCADE).
+Elimina una categoría (y sus productos por CASCADE). Las que quedan se renumeran 1..N.
 
 ---
 

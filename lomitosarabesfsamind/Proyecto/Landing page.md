@@ -23,6 +23,19 @@ API response → procesarMenuJSON() → renderizarCarta()
 - Se queda fija (sticky) debajo del nav al hacer scroll
 - Scroll-spy resalta la categoría visible
 - Altura del nav sincronizada dinámicamente con JS (`--nav-height`)
+- La categoría **promocional** también se marca en la barra (🔥 + estilo propio)
+
+### Categorías de campaña (promocional / temporal)
+Una categoría puede venir marcada como `promocional` y/o `temporal` desde el panel:
+- **Promocional**: la sección se despega del resto (fondo, borde y sombra propios), con el badge
+  `🔥 PROMO` en el encabezado. Los productos siguen siendo productos normales: entran al carrito,
+  al mensaje de WhatsApp y al control de stock igual que cualquier otro
+- **Temporal**: la sección muestra un cronómetro con lo que falta para que termine
+  (`⏳ Termina en 2d 4h`). Arriba de un día muestra días/horas, abajo muestra minutos y segundos,
+  y en la última hora se pone rojo y palpita (respeta `prefers-reduced-motion`)
+- Cuando el cronómetro llega a cero **la categoría se va sola de la página**, sin recargar: la
+  sección, su chip, sus productos y lo que el cliente tuviera de esa promo en el carrito
+  (con aviso). La API además ya no la devuelve, así que el que entra después tampoco la ve
 
 ### Carrito de compras
 - Se almacena en `localStorage` con key `lomitos-carrito`

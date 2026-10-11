@@ -203,6 +203,188 @@ describe('E2E: CRUD Categorías', () => {
 });
 
 // ============================================================
+//  Orden de categorías: corrimiento automático + reordenamiento
+//  (contra SQLite real, que es donde se nota el empate de orden)
+// ============================================================
+describe('E2E: orden de categorías', () => {
+  let token;
+
+  const listar = async () => {
+    const { data } = await api('/api/admin/categorias', 'GET', null, { Authorization: `Bearer ${token}` });
+    return data.map(c => ({ id: c.id, nombre: c.nombre, orden: c.orden }));
+  };
+
+  const contiguo = (lista) => lista.map((_, i) => i + 1);
+
+  beforeAll(async () => {
+    const { data } = await api('/api/login', 'POST', { usuario: 'testadmin', clave: 'testpass123' });
+    token = data.token;
+  });
+
+  it('debería correr el resto cuando se crea con orden 1', async () => {
+    const antes = await listar();
+
+    const { data: nueva } = await api('/api/admin/categorias', 'POST', {
+      nombre: 'Primera Ahora', orden: 1,
+    }, { Authorization: `Bearer ${token}` });
+
+    const despues = await listar();
+    // La nueva entra primera...
+    expect(despues[0].id).toBe(nueva.id);
+    // ...y las que estaban corren un lugar: órdenes 1..N sin huecos ni empates
+    expect(despues.map(c => c.orden)).toEqual(contiguo(despues));
+    // Nadie se perdió y el orden relativo anterior se mantiene intacto
+    expect(despues.map(c => c.id).filter(id => id !== nueva.id)).toEqual(antes.map(c => c.id));
+  });
+
+  it('debería mover una categoría al final sin dejar empates', async () => {
+    const antes = await listar();
+    const primera = antes[0];
+    const { status } = await api(`/api/admin/categorias/${primera.id}`, 'PUT', {
+      nombre: primera.nombre, icono: '', orden: antes.length,
+    }, { Authorization: `Bearer ${token}` });
+    expect(status).toBe(200);
+
+    const despues = await listar();
+    expect(despues[despues.length - 1].id).toBe(primera.id);
+    expect(despues.map(c => c.id)).toEqual([...antes.slice(1).map(c => c.id), primera.id]);
+    expect(despues.map(c => c.orden)).toEqual(contiguo(despues));
+  });
+
+  it('debería reordenar en bloque (arrastrar y soltar)', async () => {
+    const antes = await listar();
+    const invertido = [...antes].reverse().map(c => c.id);
+
+    const { status } = await api('/api/admin/categorias/orden', 'PUT', { ids: invertido }, {
+      Authorization: `Bearer ${token}`,
+    });
+    expect(status).toBe(200);
+
+    const despues = await listar();
+    expect(despues.map(c => c.id)).toEqual(invertido);
+    expect(despues.map(c => c.orden)).toEqual(contiguo(despues));
+
+    // Y el menú público respeta ese orden
+    const { data: menu } = await api('/api/menu');
+    const nombres = menu.categorias.map(c => c.nombre);
+    const { data: admin } = await api('/api/admin/categorias', 'GET', null, { Authorization: `Bearer ${token}` });
+    expect(nombres).toEqual(admin.map(c => c.nombre));
+  });
+
+  it('debería rechazar una lista de orden incompleta', async () => {
+    const antes = await listar();
+    const { status, data } = await api('/api/admin/categorias/orden', 'PUT', {
+      ids: [antes[0].id],
+    }, { Authorization: `Bearer ${token}` });
+    expect(status).toBe(409);
+    expect(data.error).toContain('no coincide');
+    // Y no se tocó nada
+    expect((await listar()).map(c => c.id)).toEqual(antes.map(c => c.id));
+  });
+
+  it('debería exigir token para reordenar', async () => {
+    const antes = await listar();
+    const { status } = await api('/api/admin/categorias/orden', 'PUT', { ids: [...antes].reverse().map(c => c.id) });
+    expect(status).toBe(401);
+  });
+});
+
+// ============================================================
+//  Categorías de campaña: promocional + vigencia temporal
+// ============================================================
+describe('E2E: categorías temporales', () => {
+  let token;
+  // Hora de Formosa (UTC-3) en ISO con offset: es el formato que guarda la API
+  const enHora = (h) => new Date(Date.now() + h * 3600000 - 3 * 3600000).toISOString().slice(0, 19) + '-03:00';
+  const enSegundos = (s) => new Date(Date.now() + s * 1000 - 3 * 3600000).toISOString().slice(0, 19) + '-03:00';
+
+  const crear = async (body) => {
+    const { status, data } = await api('/api/admin/categorias', 'POST', body, { Authorization: `Bearer ${token}` });
+    return { status, data };
+  };
+  const enMenu = async (nombre) => {
+    const { data } = await api('/api/menu');
+    return data.categorias.find(c => c.nombre === nombre) || null;
+  };
+
+  beforeAll(async () => {
+    const { data } = await api('/api/login', 'POST', { usuario: 'testadmin', clave: 'testpass123' });
+    token = data.token;
+  });
+
+  it('debería exponer los metadatos de campaña en el menú público', async () => {
+    const { status } = await crear({
+      nombre: 'Caja Día de la Madre', icono: '💐', promocional: 1,
+      temporal: 1, desde: enHora(-2), hasta: enHora(48),
+    });
+    expect(status).toBe(201);
+
+    const cat = await enMenu('Caja Día de la Madre');
+    expect(cat).not.toBeNull();
+    expect(cat.promocional).toBe(1);
+    expect(cat.temporal).toBe(1);
+    expect(cat.hasta).toContain('-03:00');
+  });
+
+  it('debería ocultar del menú una categoría ya vencida', async () => {
+    const { status } = await crear({
+      nombre: 'Promo Vencida', temporal: 1, desde: enHora(-48), hasta: enHora(-1),
+    });
+    expect(status).toBe(201);
+    // La API la devuelve (la API admin existe para poder arreglarla)...
+    const { data: admin } = await api('/api/admin/categorias', 'GET', null, { Authorization: `Bearer ${token}` });
+    expect(admin.find(c => c.nombre === 'Promo Vencida')).toBeTruthy();
+    // ...pero no se publica ni con el reloj de la API ni con el del visitante
+    expect(await enMenu('Promo Vencida')).toBeNull();
+    expect(admin.find(c => c.nombre === 'Promo Vencida').vigente).toBe(0);
+  });
+
+  it('debería ocultar del menú una categoría programada a futuro', async () => {
+    const { status } = await crear({
+      nombre: 'Promo Programada', temporal: 1, desde: enHora(24), hasta: enHora(72),
+    });
+    expect(status).toBe(201);
+    expect(await enMenu('Promo Programada')).toBeNull();
+  });
+
+  it('debería rechazar una temporal sin fecha de fin', async () => {
+    const { status, data } = await crear({ nombre: 'Temporal Sin Fin', temporal: 1 });
+    expect(status).toBe(400);
+    expect(data.error).toContain('fecha de fin');
+  });
+
+  it('debería rechazar un fin anterior al inicio', async () => {
+    const { status, data } = await crear({
+      nombre: 'Vigencia Invertida', temporal: 1, desde: enHora(10), hasta: enHora(2),
+    });
+    expect(status).toBe(400);
+    expect(data.error).toContain('posterior');
+  });
+
+  it('debería rechazar una fecha ilegible', async () => {
+    const { status, data } = await crear({
+      nombre: 'Fecha Mala', temporal: 1, hasta: 'mañana a la noche',
+    });
+    expect(status).toBe(400);
+    expect(data.error).toContain('no es una fecha válida');
+  });
+
+  it('debería dejar de mostrarla en cuanto vence', async () => {
+    const { data: creada } = await crear({
+      nombre: 'Caja Que Vence Ya', temporal: 1, promocional: 1, desde: enHora(-1), hasta: enSegundos(7),
+    });
+    expect(await enMenu('Caja Que Vence Ya')).not.toBeNull();
+    await new Promise(r => setTimeout(r, 9000));
+    expect(await enMenu('Caja Que Vence Ya')).toBeNull();
+    // Sin una mano encima, la categoría vencida sale sola del menú público
+    const { data: admin } = await api('/api/admin/categorias', 'GET', null, { Authorization: `Bearer ${token}` });
+    expect(admin.find(c => c.nombre === 'Caja Que Vence Ya').vigente).toBe(0);
+    // Se limpia para no ensuciar al resto de la suite
+    await api(`/api/admin/categorias/${creada.id}`, 'DELETE', null, { Authorization: `Bearer ${token}` });
+  }, 20000);
+});
+
+// ============================================================
 //  Modifier Groups
 // ============================================================
 describe('E2E: Modifier Groups', () => {

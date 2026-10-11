@@ -263,7 +263,14 @@
                 // Sólo el icono que el admin haya cargado: sin icono no dibujamos recuadro
                 // (antes las 5 categorías mostraban el mismo 🍽️ de relleno)
                 const icono = (cat.icono || '').trim();
-                categorias.set(cat.nombre, { icono, count: cat.productos.length });
+                categorias.set(cat.nombre, {
+                    icono, count: cat.productos.length,
+                    // Campaña: si la categoría se destaca y hasta cuándo se muestra
+                    promocional: !!cat.promocional,
+                    temporal: !!cat.temporal,
+                    desde: cat.desde || '',
+                    hasta: cat.hasta || '',
+                });
                 cat.productos.forEach(p => {
                     productosDB.push({
                         id: 'api-' + p.id,
@@ -352,25 +359,34 @@
                 if (prods.length === 0) return;
 
                 const id = 'carta-' + slugify(cat, 'seccion-' + index);
+                // Categoría de campaña: se destaca y, si vence, muestra cronómetro
+                const esPromo = !!data.promocional;
+                const vence = (data.temporal && data.hasta && Number.isFinite(Date.parse(data.hasta)))
+                    ? data.hasta : '';
 
                 // Chip de filtro (barra sticky): al tocarlo solo se ve esa categoría
                 const chip = document.createElement('button');
                 chip.type = 'button';
-                chip.className = 'carta-chip';
+                chip.className = esPromo ? 'carta-chip carta-chip-promo' : 'carta-chip';
                 chip.setAttribute('aria-pressed', 'false');
                 chip.dataset.target = id;
                 chip.setAttribute('aria-label', `Ver categoría ${cat}`);
-                chip.innerHTML = `${escapeHtml(cat)}`;
+                chip.innerHTML = esPromo ? `🔥 ${escapeHtml(cat)}` : `${escapeHtml(cat)}`;
                 chip.addEventListener('click', () => irACategoria(id, cat, chip));
                 chipsScroll.appendChild(chip);
 
                 // Sección del menú (one-page: todo visible)
                 const section = document.createElement('section');
-                section.className = `carta-section reveal active stagger-${(index % 3) + 1}`;
+                section.className = `carta-section reveal active stagger-${(index % 3) + 1}${esPromo ? ' carta-section-promo' : ''}`;
                 section.id = id;
                 section.setAttribute('aria-labelledby', `carta-titulo-${index}`);
+                if (vence) section.dataset.hasta = vence;
                 const iconoHTML = data.icono
                     ? `<span class="carta-section-icon" aria-hidden="true">${escapeHtml(data.icono)}</span>`
+                    : '';
+                const badgeHTML = esPromo ? '<span class="carta-promo-badge">🔥 Promo</span>' : '';
+                const countdownHTML = vence
+                    ? `<span class="carta-countdown" data-hasta="${escapeHtml(vence)}" title="Termina el ${escapeHtml(vence.slice(0, 10))}">⏳ <span class="cd-label">Termina en</span> <span class="cd-valor"></span></span>`
                     : '';
                 // H3: las categorías viven dentro de la sección "Nuestro Menú" (H2),
                 // y los productos son H4 (antes se saltaba el nivel H3)
@@ -378,6 +394,8 @@
                     <div class="carta-section-header">
                         ${iconoHTML}
                         <h3 class="carta-section-title" id="carta-titulo-${index}">${escapeHtml(cat)}</h3>
+                        ${badgeHTML}
+                        ${countdownHTML}
                         <span class="carta-section-count">${prods.length} ${prods.length === 1 ? 'opción' : 'opciones'}</span>
                     </div>
                     <div class="carta-productos"></div>
@@ -394,6 +412,63 @@
 
             iniciarScrollSpy();
             initFlechasChips();
+            iniciarCountdowns();
+        }
+
+        // ============================================================
+        //  CRONÓMETRO DE LAS CATEGORÍAS TEMPORALES
+        //  La API ya no manda las vencidas; esto cubre a quien dejó la página
+        //  abierta cuando la promoción se termina.
+        // ============================================================
+        let countdownTimer = null;
+
+        function formatoRestante(ms) {
+            const s = Math.max(0, Math.floor(ms / 1000));
+            const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600);
+            const m = Math.floor((s % 3600) / 60), seg = s % 60;
+            if (d > 0) return `${d}d ${h}h ${m}m`;
+            if (h > 0) return `${h}h ${m}m ${seg}s`;
+            return `${m}m ${seg}s`;
+        }
+
+        function iniciarCountdowns() {
+            if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+            if (!document.querySelector('#carta-container .carta-countdown')) return;
+            tickCountdowns();
+            countdownTimer = setInterval(tickCountdowns, 1000);
+        }
+
+        function tickCountdowns() {
+            const ahora = Date.now();
+            let vencida = false;
+            document.querySelectorAll('#carta-container .carta-countdown').forEach(el => {
+                const t = Date.parse(el.dataset.hasta);
+                if (!Number.isFinite(t)) return;
+                const resta = t - ahora;
+                const valor = el.querySelector('.cd-valor');
+                if (valor) valor.textContent = formatoRestante(resta);
+                el.classList.toggle('por-vencer', resta <= 3600000); // última hora
+                if (resta <= 0) vencida = true;
+            });
+            if (vencida) quitarCategoriasVencidas();
+        }
+
+        // La promo terminó: se va del menú y del carrito, sin recargar la página
+        function quitarCategoriasVencidas() {
+            const ahora = Date.now();
+            let cambio = false;
+            [...categorias.keys()].forEach(nombre => {
+                const datos = categorias.get(nombre);
+                const t = Date.parse(datos.hasta || '');
+                if (!Number.isFinite(t) || t > ahora) return;
+                categorias.delete(nombre);
+                productosDB = productosDB.filter(p => p.categoria !== nombre);
+                cambio = true;
+            });
+            if (!cambio) return;
+            filtroCategoria = null;
+            renderizarCarta();
+            reconciliarCarrito();
         }
 
         // Filtro de categorías: null = todas visibles, 'carta-...' = solo esa categoría

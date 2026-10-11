@@ -58,6 +58,17 @@ export async function setup() {
     console.warn('   Schema init warning:', e.message?.slice(0, 100));
   }
 
+  // schema.sql usa CREATE TABLE IF NOT EXISTS, así que una base local que ya
+  // existía se queda con el esquema viejo: hay que correr las migraciones.
+  // Si las columnas ya están, SQLite responde "duplicate column name" y se ignora.
+  try {
+    execSync(`npx wrangler d1 execute lomitos-db-e2e --local --file=migrate-categorias-promocional.sql --config wrangler.e2e.toml`, {
+      cwd: ADMIN_ROOT, timeout: 15000, stdio: 'pipe',
+    });
+  } catch (e) {
+    console.warn('   Migration note:', e.message?.slice(0, 100));
+  }
+
   // Clean previous test data to avoid UNIQUE constraint errors on re-runs
   const tables = ['modifier_options', 'modifier_groups', 'productos', 'categorias', 'promos', 'config', 'rate_limits'];
   for (const t of tables) {

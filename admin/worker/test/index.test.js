@@ -285,7 +285,10 @@ describe('CRUD Categorías', () => {
     env._capturado = null;
     env.DB.prepare = (sql) => {
       const stmt = prepareOriginal(sql);
-      if (/INSERT INTO categorias|UPDATE categorias/i.test(sql)) {
+      // Solo la sentencia que escribe los campos de la categoría: la
+      // normalización de orden (UPDATE ... SET orden) también toca la tabla y
+      // pisaba la captura.
+      if (/INSERT INTO categorias|UPDATE categorias SET nombre/i.test(sql)) {
         const bindOriginal = stmt.bind.bind(stmt);
         stmt.bind = (...params) => { env._capturado = params; return bindOriginal(...params); };
       }

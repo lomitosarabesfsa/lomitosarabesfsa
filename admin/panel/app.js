@@ -220,40 +220,249 @@ async function eliminarProducto(id) {
 
 // ============================================================
 //  CATEGORÍAS — CRUD completo (crear, editar, eliminar)
+//  + orden: se arrastra (manteniendo presionado) o con las flechas
+//  + campaña: destacada como promocional y/o temporal con cronómetro
 // ============================================================
+const OFFSET_AR = '-03:00'; // Formosa es UTC-3 todo el año: no hay horario de verano
+
+// ISO guardado ("2026-10-18T21:30:00-03:00") → valor de <input datetime-local>.
+// Se convierte a mano en vez de usar la zona del navegador: si el admin está
+// de viaje en otro huso, la fecha que ve sigue siendo la de Formosa.
+function aInputDatetime(valorISO) {
+  if (!valorISO) return '';
+  const t = Date.parse(valorISO);
+  if (!Number.isFinite(t)) return '';
+  return new Date(t - 3 * 3600000).toISOString().slice(0, 16);
+}
+
+// Valor del input (hora de Formosa) → ISO con offset explícito
+function desdeInputDatetime(valorInput) {
+  if (!valorInput) return '';
+  return valorInput.length === 16 ? `${valorInput}:00${OFFSET_AR}` : `${valorInput}${OFFSET_AR}`;
+}
+
+function formatoRestante(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60), seg = s % 60;
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m ${seg}s`;
+  return `${m}m ${seg}s`;
+}
+
+// Estado de vigencia, con el mismo criterio que la API
+function estadoCategoria(c) {
+  if (!c.temporal) return { clase: 'ok', texto: 'Activa' };
+  const desde = Date.parse(c.desde || ''), hasta = Date.parse(c.hasta || '');
+  const ahora = Date.now();
+  if (Number.isFinite(hasta) && ahora > hasta) return { clase: 'err', texto: 'Vencida' };
+  if (Number.isFinite(desde) && ahora < desde) return { clase: 'warn', texto: 'Programada' };
+  return { clase: 'ok', texto: 'Activa' };
+}
+
 function renderCategorias() {
   const cont = $('lista-categorias');
   if (!categorias.length) { cont.innerHTML = '<p class="empty">Sin categorías.</p>'; return; }
   cont.innerHTML = '';
-  categorias.forEach(c => {
+  categorias.forEach((c, i) => {
     const n = productos.filter(p => p.categoria_id === c.id).length;
-    const div = document.createElement('div'); div.className = 'card';
+    const div = document.createElement('div'); div.className = 'card cat-card';
+    div.dataset.id = c.id;
     // Sin icono cargado la lista muestra un guion, no un emoji de relleno
     const iconoCard = c.icono ? escapeHtml(c.icono) : '<span style="opacity:.35">—</span>';
-    div.innerHTML = `<div style="font-size:1.6rem">${iconoCard}</div>
-      <div class="info"><h3>${escapeHtml(c.nombre)}</h3><div class="meta">${n} producto(s) · Orden: ${c.orden || 0}</div></div>
+    const estado = estadoCategoria(c);
+    const badges = [
+      c.promocional ? '<span class="badge promo">🔥 Promo</span>' : '',
+      c.temporal ? `<span class="badge temp" title="Se oculta sola al vencer">⏱️ Temporal</span>` : '',
+      `<span class="badge ${estado.clase}">${estado.texto}</span>`,
+    ].join('');
+    // Cronómetro vivo (lo actualiza el ticker de abajo, sin re-render)
+    const timer = c.temporal && Number.isFinite(Date.parse(c.hasta || ''))
+      ? ` · <span class="cat-timer" data-hasta="${escapeHtml(c.hasta)}"></span>`
+      : '';
+    div.innerHTML = `
+      <span class="cat-drag" aria-hidden="true" title="Mantené presionado y arrastrá para reordenar">⠿</span>
+      <div style="font-size:1.6rem">${iconoCard}</div>
+      <div class="info">
+        <h3>${escapeHtml(c.nombre)}${badges}</h3>
+        <div class="meta"><span class="cat-posicion">Posición ${i + 1}</span> · ${n} producto(s)${timer}</div>
+      </div>
       <div class="actions">
+        <button class="btn-mini" data-action="mover-categoria" data-id="${c.id}" data-dir="-1" title="Subir" aria-label="Subir ${escapeHtml(c.nombre)}" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="btn-mini" data-action="mover-categoria" data-id="${c.id}" data-dir="1" title="Bajar" aria-label="Bajar ${escapeHtml(c.nombre)}" ${i === categorias.length - 1 ? 'disabled' : ''}>↓</button>
         <button class="btn-mini" data-action="abrir-categoria" data-id="${c.id}">Editar</button>
         <button class="btn-mini danger" data-action="eliminar-categoria" data-id="${c.id}">Borrar</button>
       </div>`;
     cont.appendChild(div);
   });
+  iniciarDragCategorias();
+}
+
+// ============================================================
+//  REORDENAR — arrastrar y soltar (mouse y dedo)
+//  Mantener presionado levanta la tarjeta; la manija ⠿ la levanta al toque.
+//  Las flechas ↑↓ quedan como camino directo y accesible.
+// ============================================================
+const CAT_LONGPRESS_MS = 220;
+let catDrag = null;
+
+function iniciarDragCategorias() {
+  const cont = $('lista-categorias');
+  if (!cont || cont.dataset.dragListo === '1') return;
+  cont.dataset.dragListo = '1';
+
+  const abortar = () => {
+    if (!catDrag) return;
+    clearTimeout(catDrag.timer);
+    if (catDrag.tarjeta) {
+      catDrag.tarjeta.classList.remove('arrastrando');
+      catDrag.tarjeta.style.touchAction = '';
+    }
+    document.body.classList.remove('drag-categorias');
+    catDrag = null;
+  };
+
+  const activar = (x, y) => {
+    if (!catDrag) return;
+    catDrag.activo = true;
+    const t = catDrag.tarjeta;
+    catDrag.desfaseY = y - t.getBoundingClientRect().top;
+    t.classList.add('arrastrando');
+    t.style.touchAction = 'none';
+    document.body.classList.add('drag-categorias');
+    try { t.setPointerCapture(catDrag.pointerId); } catch {}
+    if (navigator.vibrate) navigator.vibrate(12); // confirmación táctil
+    actualizarPosiciones();
+  };
+
+  cont.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    // Los botones y campos siguen funcionando igual: no arrancan un arrastre
+    if (e.target.closest('[data-action], input, select, textarea, a')) return;
+    const tarjeta = e.target.closest('.cat-card');
+    if (!tarjeta) return;
+    const manija = e.target.closest('.cat-drag');
+    catDrag = { tarjeta, pointerId: e.pointerId, activo: false, x: e.clientX, y: e.clientY, timer: null };
+    catDrag.timer = setTimeout(() => activar(e.clientX, e.clientY), manija ? 0 : CAT_LONGPRESS_MS);
+  });
+
+  document.addEventListener('pointermove', (e) => {
+    if (!catDrag || e.pointerId !== catDrag.pointerId) return;
+    if (!catDrag.activo) {
+      // Se movió antes de cumplirse el "mantener": era scroll, no arrastre
+      if (Math.abs(e.clientX - catDrag.x) > 8 || Math.abs(e.clientY - catDrag.y) > 8) abortar();
+      return;
+    }
+    e.preventDefault();
+    moverTarjeta(catDrag.tarjeta, e.clientY);
+  }, { passive: false });
+
+  document.addEventListener('pointerup', (e) => {
+    if (!catDrag || e.pointerId !== catDrag.pointerId) return;
+    const huboArrastre = catDrag.activo;
+    abortar();
+    // Solo se guarda si realmente se movió: un toque simple no toca la API
+    if (huboArrastre && huboCambioDeOrden()) guardarOrdenCategorias();
+  });
+
+  document.addEventListener('pointercancel', abortar);
+}
+
+function moverTarjeta(tarjeta, clientY) {
+  const cont = tarjeta.parentElement;
+  const hermanas = [...cont.querySelectorAll('.cat-card')];
+  const actual = hermanas.indexOf(tarjeta);
+  let destino = actual;
+  hermanas.forEach((otra, i) => {
+    if (i === actual) return;
+    const r = otra.getBoundingClientRect();
+    const medio = r.top + r.height / 2;
+    if (i < actual && clientY < medio) destino = Math.min(destino, i);
+    if (i > actual && clientY > medio) destino = Math.max(destino, i);
+  });
+  if (destino === actual) return;
+  const ref = destino > actual ? hermanas[destino].nextSibling : hermanas[destino];
+  cont.insertBefore(tarjeta, ref);
+  actualizarPosiciones();
+}
+
+// Refresca posiciones y habilitación de flechas sin volver a dibujar la lista
+// (re-renderizar en medio del arrastre mataría el nodo que estás moviendo)
+function actualizarPosiciones() {
+  const tarjetas = [...$('lista-categorias').querySelectorAll('.cat-card')];
+  tarjetas.forEach((t, i) => {
+    const pos = t.querySelector('.cat-posicion');
+    if (pos) pos.textContent = `Posición ${i + 1}`;
+    const flechas = t.querySelectorAll('[data-action="mover-categoria"]');
+    if (flechas[0]) flechas[0].disabled = i === 0;
+    if (flechas[1]) flechas[1].disabled = i === tarjetas.length - 1;
+  });
+}
+
+function idsEnPantalla() {
+  return [...$('lista-categorias').querySelectorAll('.cat-card')].map(t => parseInt(t.dataset.id, 10));
+}
+
+function huboCambioDeOrden() {
+  const enPantalla = idsEnPantalla();
+  return enPantalla.some((id, i) => categorias[i] && categorias[i].id !== id);
+}
+
+async function guardarOrdenCategorias() {
+  const ids = idsEnPantalla();
+  try {
+    await api('/api/admin/categorias/orden', 'PUT', { ids });
+    toast('Orden guardado ✓');
+  } catch (e) {
+    toast(e.message, true);
+  }
+  // Se relee del servidor: lo que ves es lo que quedó guardado, no una
+  // ilusión local si la escritura falló.
+  await cargarTodo();
+}
+
+async function moverCategoria(id, dir) {
+  const cont = $('lista-categorias');
+  const tarjetas = [...cont.querySelectorAll('.cat-card')];
+  const actual = tarjetas.findIndex(t => parseInt(t.dataset.id, 10) === id);
+  const destino = actual + dir;
+  if (actual < 0 || destino < 0 || destino >= tarjetas.length) return;
+  cont.insertBefore(tarjetas[actual], dir < 0 ? tarjetas[destino] : tarjetas[destino].nextSibling);
+  actualizarPosiciones();
+  await guardarOrdenCategorias();
 }
 
 function abrirCategoria(id = null) {
-  let nombre='', icono='', orden=0;
+  let nombre='', icono='', orden=1, promocional=false, temporal=false, desde='', hasta='';
   if (id) {
     const c = categorias.find(x => x.id === id);
     if (!c) return;
-    nombre=c.nombre; icono=c.icono; orden=c.orden||0;
+    nombre=c.nombre; icono=c.icono||''; orden=c.orden||1;
+    promocional=!!c.promocional; temporal=!!c.temporal;
+    desde=aInputDatetime(c.desde); hasta=aInputDatetime(c.hasta);
+  } else {
+    // Nueva: por defecto al final. Si le cambiás la posición, el resto se corre.
+    orden = categorias.length + 1;
   }
   const m = $('modal-content');
   m.innerHTML = `
     <h3>${id ? 'Editar categoría' : 'Nueva categoría'}</h3>
     <div class="field"><label>Nombre *</label><input type="text" id="cat-nombre" value="${escapeHtml(nombre)}"></div>
     <div class="field-row">
-      <div class="field"><label>Icono (emoji)</label><input type="text" id="cat-icono" value="${escapeHtml(icono)}" maxlength="4" placeholder="🌯"><div style="color:var(--muted);font-size:.75rem;margin-top:4px">Vacío = la categoría se muestra sin icono en la web</div></div>
-      <div class="field"><label>Orden</label><input type="number" id="cat-orden" value="${orden}" min="0"></div>
+      <div class="field"><label>Icono (emoji)</label><input type="text" id="cat-icono" value="${escapeHtml(icono)}" maxlength="4" placeholder="🌯"><div class="hint">Vacío = la categoría se muestra sin icono en la web</div></div>
+      <div class="field"><label>Posición</label><input type="number" id="cat-orden" value="${orden}" min="1" max="${categorias.length + 1}"><div class="hint">Si la posición ya está ocupada, las demás se corren un lugar.</div></div>
+    </div>
+    <div class="field">
+      <label>Campaña</label>
+      <label class="chk"><input type="checkbox" id="cat-promocional" ${promocional ? 'checked' : ''}> 🔥 Destacar como promocional</label>
+      <label class="chk"><input type="checkbox" id="cat-temporal" ${temporal ? 'checked' : ''} onchange="toggleTemporalCat()"> ⏱️ Temporal: se oculta sola al vencer</label>
+    </div>
+    <div id="cat-vigencia" style="display:${temporal ? 'block' : 'none'}">
+      <div class="field-row">
+        <div class="field"><label>Desde (opcional)</label><input type="datetime-local" id="cat-desde" value="${desde}"></div>
+        <div class="field"><label>Hasta *</label><input type="datetime-local" id="cat-hasta" value="${hasta}"></div>
+      </div>
+      <div class="hint">La web muestra un cronómetro con lo que falta. Al llegar la fecha de fin la categoría desaparece sola, aunque nadie la apague.</div>
     </div>
     <div class="actions">
       <button class="btn-ghost" data-action="cerrar-modal">Cancelar</button>
@@ -263,9 +472,33 @@ function abrirCategoria(id = null) {
   $('cat-nombre').focus();
 }
 
+// Al marcar "temporal" se abre la vigencia y se propone un fin de campaña
+function toggleTemporalCat() {
+  const activo = $('cat-temporal').checked;
+  $('cat-vigencia').style.display = activo ? 'block' : 'none';
+  if (activo && !$('cat-hasta').value) {
+    const p = n => String(n).padStart(2, '0');
+    const d = new Date(Date.now() + 7 * 86400000 - 3 * 3600000); // hora de Formosa
+    $('cat-hasta').value = `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}T23:59`;
+  }
+  if (activo) $('cat-hasta').focus();
+}
+
 async function guardarCategoria(id) {
-  const body = { nombre: $('cat-nombre').value.trim(), icono: $('cat-icono').value.trim(), orden: parseInt($('cat-orden').value,10)||0 };
+  const temporal = $('cat-temporal').checked;
+  const posicion = parseInt($('cat-orden').value, 10);
+  const body = {
+    nombre: $('cat-nombre').value.trim(),
+    icono: $('cat-icono').value.trim(),
+    orden: posicion,
+    promocional: $('cat-promocional').checked ? 1 : 0,
+    temporal: temporal ? 1 : 0,
+    desde: desdeInputDatetime($('cat-desde').value),
+    hasta: desdeInputDatetime($('cat-hasta').value),
+  };
   if (!body.nombre) { toast('El nombre es obligatorio', true); return; }
+  if (!Number.isFinite(posicion) || posicion < 1) { toast('La posición tiene que ser 1 o más', true); return; }
+  if (temporal && !body.hasta) { toast('Poné la fecha de fin de la promoción', true); return; }
   await withLoading('btn-guardar-cat', async () => {
     try {
       if (id) await api('/api/admin/categorias/' + id, 'PUT', body);
@@ -280,6 +513,16 @@ async function eliminarCategoria(id) {
   try { await api('/api/admin/categorias/' + id, 'DELETE'); toast('Categoría eliminada'); await cargarTodo(); }
   catch (e) { toast(e.message, true); }
 }
+
+// Cronómetro de las categorías temporales (una sola vez, cada segundo)
+setInterval(() => {
+  document.querySelectorAll('.cat-timer[data-hasta]').forEach(el => {
+    const t = Date.parse(el.dataset.hasta);
+    if (!Number.isFinite(t)) { el.textContent = ''; return; }
+    const resta = t - Date.now();
+    el.textContent = resta > 0 ? `⏳ termina en ${formatoRestante(resta)}` : '⛔ terminada (oculta en la web)';
+  });
+}, 1000);
 
 // ============================================================
 //  MODIFIER GROUPS — con opciones inline
@@ -593,6 +836,9 @@ document.addEventListener('click', (e) => {
       break;
     case 'abrir-categoria':
       abrirCategoria(target.dataset.id ? parseInt(target.dataset.id) : null);
+      break;
+    case 'mover-categoria':
+      moverCategoria(parseInt(target.dataset.id), parseInt(target.dataset.dir));
       break;
     case 'eliminar-categoria':
       eliminarCategoria(parseInt(target.dataset.id));

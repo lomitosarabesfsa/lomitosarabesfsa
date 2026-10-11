@@ -26,9 +26,33 @@ Clave:   (la que configuraste en secrets)
 - **Reordenar**: Cambiar el orden de aparición dentro de la categoría
 
 ### 📂 Categorías
-- **Listar**: Ver todas las categorías
-- **Crear**: Agregar nueva categoría con nombre y emoji
-- **Eliminar**: Borrar categoría (y todos sus productos)
+- **Listar**: Ver todas las categorías con su **posición real** (la que tiene la web), sus
+  productos, y los badges de campaña (`🔥 Promo`, `⏱️ Temporal`, `Activa` / `Programada` / `Vencida`)
+- **Crear**: Agregar nueva categoría con nombre, emoji y **posición**
+- **Eliminar**: Borrar categoría (y todos sus productos). Las que quedan se renumeran solas
+
+#### Ordenar (arrastrar, flechas o número)
+- **Arrastrar**: mantené presionada una categoría (o tomala de la manija `⠿`) y movela; al
+  soltarla se guarda sola. Funciona con mouse y con el dedo
+- **Flechas ↑ ↓**: mueven una posición y guardan
+- **Campo Posición**: si le ponés un número ocupado, las demás **se corren un lugar**. Al crear
+  una categoría con posición 1, entra primera y todas las otras bajan uno
+
+El orden del panel es el orden real del menú: se guarda 1..N, sin huecos ni números repetidos
+(antes podías tener dos categorías con orden 1 y la web las ordenaba al azar).
+
+#### Campañas (Día de la Madre, aniversario, fechas puntuales)
+En el modal de la categoría, sección **Campaña**:
+- **🔥 Destacar como promocional**: la categoría se ve distinta en la web (badge 🔥 PROMO,
+  fondo y borde propios, marcada también en la barra de chips)
+- **⏱️ Temporal**: la categoría tiene vigencia. Al marcarla se abre **Desde** (opcional) y
+  **Hasta** (obligatorio), con una fecha sugerida a 7 días
+  - En la web aparece un **cronómetro** con lo que falta ("⏳ Termina en 2d 4h"); en la última
+    hora se pone rojo y palpita
+  - Cuando llega la fecha de fin, la categoría **desaparece sola** del menú (y si alguien la
+    tenía en el carrito, se le quita con aviso). No hace falta acordarse de apagarla
+  - Si ponés **Desde** en el futuro, queda **programada**: se publica sola cuando llega la hora
+  - Mientras está vencida o programada, el panel te lo dice con el badge de estado
 
 ### 🔥 Promos
 - **Activar/Desactivar**: Mostrar u ocultar una promo en la landing

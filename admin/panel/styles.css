@@ -108,6 +108,22 @@
   .mg-opt-edit input[name="opt-name"] { flex: 1; }
   .mg-opt-edit input[name="opt-price"] { width: 90px; }
 
+  /* ===== CATEGORÍAS: orden arrastrando + campaña ===== */
+  #lista-categorias { overscroll-behavior-y: contain; }
+  .cat-card { cursor: grab; transition: transform .12s ease, box-shadow .12s ease, background .12s ease; }
+  .cat-card .cat-drag { cursor: grab; color: var(--muted); font-size: 1.15rem; line-height: 1; padding: 6px 2px; flex-shrink: 0; touch-action: none; user-select: none; -webkit-user-select: none; }
+  /* Mientras se arrastra: la tarjeta se levanta y deja de moverse con el scroll */
+  .cat-card.arrastrando { transform: scale(1.02); box-shadow: 0 14px 34px rgba(0,0,0,.55); background: var(--surface2); border: 1px solid rgba(245,124,0,.45); position: relative; z-index: 5; }
+  body.drag-categorias { user-select: none; -webkit-user-select: none; cursor: grabbing; }
+  body.drag-categorias .cat-card { cursor: grabbing; }
+  .cat-timer { color: var(--primary); font-weight: 700; }
+  .badge.promo { background: linear-gradient(135deg, rgba(245,124,0,.28), rgba(216,67,21,.28)); color: var(--primary); border: 1px solid rgba(245,124,0,.45); }
+  .badge.temp { background: rgba(96,165,250,.15); color: #60a5fa; }
+  .hint { color: var(--muted); font-size: .75rem; margin-top: 4px; line-height: 1.35; }
+  .chk { display: flex; align-items: center; gap: 9px; font-size: .9rem; cursor: pointer; padding: 6px 0; }
+  .chk input { width: auto; padding: 0; margin: 0; border: none; background: none; accent-color: var(--primary); }
+  .orden-ayuda { color: var(--muted); font-size: .8rem; margin-bottom: 12px; }
+
   /* Login */
   #login { max-width: 380px; margin: 12vh auto; background: var(--surface); padding: 36px; border-radius: var(--radius); }
   #login h2 { color: var(--primary); margin-bottom: 20px; text-align: center; }
@@ -126,6 +142,8 @@
     .card { flex-wrap: wrap; }
     .card .actions { width: 100%; }
     .card .actions button { flex: 1; }
+    /* El dedo necesita más margen para "levantar" la tarjeta */
+    .cat-card .cat-drag { font-size: 1.4rem; padding: 8px 4px; }
     .mg-card-header { flex-wrap: wrap; }
     .mg-card-header .actions { width: 100%; margin-top: 8px; }
     .mg-opt-row { padding: 8px 12px; }

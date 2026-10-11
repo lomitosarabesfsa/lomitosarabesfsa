@@ -55,6 +55,22 @@ npx wrangler d1 execute lomitos-db --remote --file=seed.sql
 
 ---
 
+## 4b. Migraciones (bases que ya existían)
+
+`schema.sql` usa `CREATE TABLE IF NOT EXISTS`: en una base que ya tiene las tablas **no agrega
+columnas nuevas**. Si la base es de antes de la campaña del Día de la Madre, hay que correr la
+migración antes de deployar el Worker nuevo:
+
+```bash
+npx wrangler d1 execute lomitos-db --remote --file=migrate-categorias-promocional.sql
+```
+
+Agrega a `categorias` las columnas `promocional`, `temporal`, `desde` y `hasta`, y renumera los
+órdenes a 1..N. Es idempotente: si las columnas ya están, avisa "duplicate column name" y no
+rompe nada. **Base nueva (recién creada): no hace falta**, el `schema.sql` ya las trae.
+
+---
+
 ## 5. Configurar secrets
 
 ```bash

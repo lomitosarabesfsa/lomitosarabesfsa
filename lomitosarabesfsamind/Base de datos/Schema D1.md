@@ -14,7 +14,11 @@ CREATE TABLE IF NOT EXISTS categorias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL UNIQUE,
   icono TEXT NOT NULL DEFAULT '',            -- vacío = sin icono (la landing no dibuja el recuadro)
-  orden INTEGER NOT NULL DEFAULT 0
+  orden INTEGER NOT NULL DEFAULT 0,          -- 1..N, siempre normalizado (sin empates)
+  promocional INTEGER NOT NULL DEFAULT 0,    -- 1 = la landing la destaca sobre el resto
+  temporal INTEGER NOT NULL DEFAULT 0,       -- 1 = tiene vigencia (se oculta sola al vencer)
+  desde TEXT NOT NULL DEFAULT '',            -- ISO con offset. Vacío = sin inicio
+  hasta TEXT NOT NULL DEFAULT ''             -- ISO con offset. Obligatorio si temporal = 1
 );
 ```
 
@@ -23,7 +27,21 @@ CREATE TABLE IF NOT EXISTS categorias (
 | `id` | INTEGER | PK autoincremental |
 | `nombre` | TEXT | Nombre único (ej: "Lomitos") |
 | `icono` | TEXT | Emoji del icono. **Vacío = sin icono**: la landing muestra la categoría con sólo su nombre (antes el default `🍽️` repetía el mismo plato en todas) |
-| `orden` | INTEGER | Posición en el menú |
+| `orden` | INTEGER | Posición en el menú. Lo escribe la API (nunca el número crudo del panel): siempre queda **1..N, sin huecos ni empates** |
+| `promocional` | INTEGER | `1` = categoría de campaña: la landing le pone badge 🔥, fondo y borde propios y la marca en la barra de chips |
+| `temporal` | INTEGER | `1` = la categoría tiene vigencia (campaña con fecha de fin) |
+| `desde` | TEXT | Inicio de la vigencia en ISO con offset (`2026-10-18T00:00:00-03:00`). Vacío = visible desde ya |
+| `hasta` | TEXT | Fin de la vigencia. Vacío = no vence. Con `temporal = 1` la API lo exige |
+
+**Vigencia**: una categoría `temporal` fuera de su ventana no se publica en `GET /api/menu`
+(queda programada u oculta), pero **sí** aparece en `GET /api/admin/categorias` (con `vigente: 0`)
+para poder corregirla. Las fechas se guardan con offset explícito para que el vencimiento no
+dependa de la zona horaria del servidor ni del visitante.
+
+> **Migración**: las bases creadas antes de la campaña del Día de la Madre no tienen estas
+> columnas. Correr `admin/migrate-categorias-promocional.sql` (agrega las columnas y renumera
+> los órdenes 1..N). El `schema.sql` solo alcanza para bases nuevas, porque usa
+> `CREATE TABLE IF NOT EXISTS`.
 
 ---
 

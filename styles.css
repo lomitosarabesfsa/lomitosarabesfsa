@@ -914,6 +914,91 @@
             white-space: nowrap;
         }
 
+        /* ============================================
+           CATEGORÍA DE CAMPAÑA (promocional / temporal)
+           ============================================ */
+
+        /* En la barra de chips también se nota cuál es la de campaña */
+        .carta-chip-promo {
+            border-color: rgba(245, 124, 0, 0.55);
+            background: linear-gradient(135deg, rgba(245, 124, 0, 0.16), rgba(216, 67, 21, 0.16));
+            color: var(--text);
+        }
+
+        /* La sección promocional se despega del resto del menú */
+        .carta-section-promo {
+            padding: 18px;
+            border-radius: 20px;
+            border: 1px solid rgba(245, 124, 0, 0.45);
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(245, 124, 0, 0.16), transparent 62%),
+                linear-gradient(180deg, rgba(216, 67, 21, 0.1), rgba(255, 255, 255, 0.02));
+            box-shadow: 0 12px 36px rgba(245, 124, 0, 0.14);
+        }
+
+        .carta-section-promo .carta-section-header {
+            border-bottom-color: rgba(245, 124, 0, 0.5);
+        }
+
+        .carta-promo-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 11px;
+            border-radius: 50px;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: #fff;
+            font-weight: 800;
+            font-size: 0.68rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            box-shadow: 0 4px 14px rgba(245, 124, 0, 0.35);
+        }
+
+        /* Cronómetro: lo que falta para que la categoría se oculte sola */
+        .carta-countdown {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 11px;
+            border-radius: 50px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(245, 124, 0, 0.35);
+            color: var(--primary-text);
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .carta-countdown .cd-valor {
+            color: #fff;
+        }
+
+        /* Última hora: el reloj pide atención */
+        .carta-countdown.por-vencer {
+            background: rgba(239, 68, 68, 0.18);
+            border-color: rgba(239, 68, 68, 0.6);
+            animation: cd-pulso 1.3s ease-in-out infinite;
+        }
+
+        @keyframes cd-pulso {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.62; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .carta-countdown.por-vencer { animation: none; }
+        }
+
+        /* En pantalla chica el encabezado con badge + cronómetro necesita aire */
+        @media (max-width: 560px) {
+            .carta-section-promo { padding: 14px; }
+            .carta-section-promo .carta-section-header { flex-wrap: wrap; row-gap: 8px; }
+            .carta-section-promo .carta-section-count { margin-left: 0; }
+        }
+
         .carta-productos {
             padding-top: 8px;
         }

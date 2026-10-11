@@ -171,7 +171,50 @@ function validateCategoria(body) {
   const errors = [];
   if (!body.nombre || typeof body.nombre !== 'string' || body.nombre.trim().length === 0) errors.push('nombre es obligatorio');
   if (body.nombre && body.nombre.length > 100) errors.push('nombre demasiado largo (máx 100)');
+  if (body.orden !== undefined && body.orden !== null
+      && (typeof body.orden !== 'number' || !Number.isFinite(body.orden) || body.orden < 0)) {
+    errors.push('orden debe ser un número positivo');
+  }
+  const desde = fechaISOaEpoch(body.desde);
+  const hasta = fechaISOaEpoch(body.hasta);
+  if (desde !== null && !Number.isFinite(desde)) errors.push('desde no es una fecha válida');
+  if (hasta !== null && !Number.isFinite(hasta)) errors.push('hasta no es una fecha válida');
+  if (body.temporal) {
+    // Una promo temporal sin fecha de fin es la promo que se te olvida apagar:
+    // justamente lo que esta función viene a evitar.
+    if (hasta === null) errors.push('una categoría temporal necesita fecha de fin (hasta)');
+    else if (Number.isFinite(hasta) && Number.isFinite(desde) && hasta <= desde) {
+      errors.push('la fecha de fin debe ser posterior a la de inicio');
+    }
+  }
   return errors;
+}
+
+// ---------- Fechas de vigencia ----------
+// Se guardan como ISO con offset explícito ("2026-10-18T21:30:00-03:00"), así
+// el vencimiento no depende de la zona horaria del servidor ni del visitante.
+// null = "sin límite"; NaN = valor ilegible (solo puede llegar por SQL a mano).
+function fechaISOaEpoch(valor) {
+  if (valor === undefined || valor === null || String(valor).trim() === '') return null;
+  return Date.parse(String(valor));
+}
+
+// Normaliza lo que se persiste: solo se guarda si es una fecha legible.
+function guardarFecha(valor) {
+  const raw = String(valor ?? '').trim().slice(0, 40);
+  if (!raw) return '';
+  return Number.isFinite(Date.parse(raw)) ? raw : '';
+}
+
+// Una categoría temporal solo se muestra dentro de su ventana: ni antes de
+// "desde" (programada) ni después de "hasta" (vencida).
+function categoriaVigente(cat, ahora = Date.now()) {
+  if (!cat || !cat.temporal) return true;
+  const desde = fechaISOaEpoch(cat.desde);
+  const hasta = fechaISOaEpoch(cat.hasta);
+  if (desde !== null && Number.isFinite(desde) && ahora < desde) return false;
+  if (hasta !== null && Number.isFinite(hasta) && ahora > hasta) return false;
+  return true;
 }
 
 // D1/SQLite tira "UNIQUE constraint failed: <tabla>.<columna>" al violar un índice único.
@@ -227,7 +270,12 @@ async function uploadToR2(request, envLocal, key) {
 //  GET /api/menu — Menú público con modifier groups
 // ============================================================
 async function getMenu(envLocal) {
-  const categorias = (await envLocal.DB.prepare('SELECT * FROM categorias ORDER BY orden').all()).results;
+  // Orden determinista (orden, id): con valores repetidos el desempate no puede
+  // quedar en manos del plan de consulta, o dos categorías se intercambian solas.
+  // Las temporales fuera de su ventana no se publican: la web nunca muestra una
+  // promo vencida aunque nadie se acuerde de apagarla.
+  const categorias = (await envLocal.DB.prepare('SELECT * FROM categorias ORDER BY orden, id').all()).results
+    .filter(c => categoriaVigente(c));
   const productos = (await envLocal.DB.prepare('SELECT * FROM productos WHERE activo = 1 ORDER BY orden').all()).results;
   const promos = (await envLocal.DB.prepare('SELECT * FROM promos WHERE activa = 1').all()).results;
   const configRows = (await envLocal.DB.prepare('SELECT clave, valor FROM config').all()).results;
@@ -257,6 +305,12 @@ async function getMenu(envLocal) {
 
       return {
         id: c.id, nombre: c.nombre, icono: c.icono,
+        // Metadatos de campaña: la landing destaca las promocionales y corre el
+        // cronómetro de las temporales con el "hasta" real
+        promocional: c.promocional ? 1 : 0,
+        temporal: c.temporal ? 1 : 0,
+        desde: c.desde || '',
+        hasta: c.hasta || '',
         modifier_groups: catGroups,
         productos: productos.filter(p => p.categoria_id === c.id).map(p => {
           // Groups específicos del producto
@@ -367,18 +421,59 @@ async function eliminarProducto(envLocal, id) {
 // ============================================================
 //  CRUD Categorías
 // ============================================================
+
+// Órdenes siempre 1..N, sin huecos ni empates. Es la fuente de verdad de la
+// posición: lo que el panel ve es lo que la landing muestra.
+async function normalizarOrdenCategorias(envLocal, ids) {
+  if (!ids.length) return;
+  await envLocal.DB.batch(ids.map((id, i) =>
+    envLocal.DB.prepare('UPDATE categorias SET orden = ? WHERE id = ?').bind(i + 1, id)));
+}
+
+async function idsCategoriasOrdenadas(envLocal) {
+  const rows = (await envLocal.DB.prepare('SELECT id FROM categorias ORDER BY orden, id').all()).results;
+  return rows.map(r => r.id);
+}
+
+// Coloca una categoría en la posición pedida (1 = primera) y corre el resto.
+// Esta es la pieza que responde a "si le asigno 1, que se corran los demás".
+async function colocarCategoriaEn(envLocal, id, posicion) {
+  const ids = (await idsCategoriasOrdenadas(envLocal)).filter(x => x !== id);
+  const p = Math.min(Math.max(1, Math.trunc(Number(posicion)) || 1), ids.length + 1);
+  ids.splice(p - 1, 0, id);
+  await normalizarOrdenCategorias(envLocal, ids);
+  return p;
+}
+
 async function listarCategorias(envLocal) {
-  const rows = (await envLocal.DB.prepare('SELECT * FROM categorias ORDER BY orden').all()).results;
-  return json(rows);
+  const rows = (await envLocal.DB.prepare('SELECT * FROM categorias ORDER BY orden, id').all()).results;
+  // El panel ve también las programadas y las vencidas (necesita poder
+  // corregirlas), pero con el estado ya resuelto para poder avisar.
+  return json(rows.map(c => ({ ...c, vigente: categoriaVigente(c) ? 1 : 0 })));
 }
 
 async function crearCategoria(envLocal, body) {
   const errors = validateCategoria(body);
   if (errors.length) return jsonError(errors.join('; '), 400);
   try {
-    const res = await envLocal.DB.prepare('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)')
-      .bind(body.nombre.trim(), String(body.icono ?? '').trim().slice(0, 10), body.orden || 0).run();
-    return json({ ok: true, id: res.meta.last_row_id }, 201);
+    const existentes = (await idsCategoriasOrdenadas(envLocal)).length;
+    // Sin "orden" explícito la categoría va al final; con orden N se inserta en
+    // N y todas las que estaban de ahí para abajo corren un lugar.
+    const posicion = (body.orden === undefined || body.orden === null) ? existentes + 1 : body.orden;
+    const res = await envLocal.DB.prepare(
+      'INSERT INTO categorias (nombre, icono, orden, promocional, temporal, desde, hasta) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(
+      body.nombre.trim(),
+      String(body.icono ?? '').trim().slice(0, 10),
+      posicion,
+      body.promocional ? 1 : 0,
+      body.temporal ? 1 : 0,
+      guardarFecha(body.desde),
+      guardarFecha(body.hasta)
+    ).run();
+    const id = res.meta.last_row_id;
+    await colocarCategoriaEn(envLocal, id, posicion);
+    return json({ ok: true, id }, 201);
   } catch (e) {
     if (esConflictoUnique(e)) return jsonError('Ya existe una categoría con ese nombre', 409);
     throw e;
@@ -389,9 +484,23 @@ async function actualizarCategoria(envLocal, id, body) {
   const errors = validateCategoria(body);
   if (errors.length) return jsonError(errors.join('; '), 400);
   try {
-    const res = await envLocal.DB.prepare('UPDATE categorias SET nombre = ?, icono = ?, orden = ? WHERE id = ?')
-      .bind(body.nombre.trim(), String(body.icono ?? '').trim().slice(0, 10), body.orden || 0, id).run();
+    const res = await envLocal.DB.prepare(
+      'UPDATE categorias SET nombre = ?, icono = ?, promocional = ?, temporal = ?, desde = ?, hasta = ? WHERE id = ?'
+    ).bind(
+      body.nombre.trim(),
+      String(body.icono ?? '').trim().slice(0, 10),
+      body.promocional ? 1 : 0,
+      body.temporal ? 1 : 0,
+      guardarFecha(body.desde),
+      guardarFecha(body.hasta),
+      id
+    ).run();
     if (!res.meta.changes) return jsonError('Categoría no encontrada', 404);
+    // Si le cambiaste el número, la categoría se mueve a esa posición y el
+    // resto se corre (mismo criterio que al crear).
+    if (body.orden !== undefined && body.orden !== null) {
+      await colocarCategoriaEn(envLocal, Number(id), body.orden);
+    }
     return json({ ok: true });
   } catch (e) {
     if (esConflictoUnique(e)) return jsonError('Ya existe una categoría con ese nombre', 409);
@@ -401,7 +510,24 @@ async function actualizarCategoria(envLocal, id, body) {
 
 async function eliminarCategoria(envLocal, id) {
   const res = await envLocal.DB.prepare('DELETE FROM categorias WHERE id = ?').bind(id).run();
+  // Compacta los lugares libres: si borrás la 2, la 3 pasa a ser la 2.
+  if (res.meta.changes) await normalizarOrdenCategorias(envLocal, await idsCategoriasOrdenadas(envLocal));
   return json({ ok: res.meta.changes > 0 });
+}
+
+// Reordenamiento en bloque (arrastrar y soltar en el panel): recibe la lista de
+// ids ya en el orden final y la baja a la base de una sola vez.
+async function reordenarCategorias(envLocal, body) {
+  const crudos = body && Array.isArray(body.ids) ? body.ids.map(n => parseInt(n, 10)) : null;
+  if (!crudos || !crudos.length) return jsonError('Falta la lista de categorías en orden');
+  if (crudos.some(n => !Number.isInteger(n) || n < 1)) return jsonError('La lista de orden tiene ids inválidos');
+  if (new Set(crudos).size !== crudos.length) return jsonError('La lista de orden tiene ids repetidos');
+  const existentes = await idsCategoriasOrdenadas(envLocal);
+  if (crudos.length !== existentes.length || existentes.some(id => !crudos.includes(id))) {
+    return jsonError('La lista de orden no coincide con las categorías actuales', 409);
+  }
+  await normalizarOrdenCategorias(envLocal, crudos);
+  return json({ ok: true });
 }
 
 // ============================================================
@@ -582,6 +708,10 @@ export default {
       if (path === '/api/admin/categorias') {
         if (request.method === 'GET') return applyCors(await listarCategorias(envLocal), request);
         if (request.method === 'POST') return applyCors(await crearCategoria(envLocal, await request.json()), request);
+      }
+      // Reordenamiento en bloque: va antes del match por id porque "orden" no es numérico
+      if (path === '/api/admin/categorias/orden' && request.method === 'PUT') {
+        return applyCors(await reordenarCategorias(envLocal, await request.json()), request);
       }
       const catMatch = path.match(/^\/api\/admin\/categorias\/(\d+)$/);
       if (catMatch) {

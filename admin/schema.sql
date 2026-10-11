@@ -9,7 +9,11 @@ CREATE TABLE IF NOT EXISTS categorias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL UNIQUE,
   icono TEXT NOT NULL DEFAULT '',            -- vacío = sin icono (la landing no dibuja recuadro)
-  orden INTEGER NOT NULL DEFAULT 0
+  orden INTEGER NOT NULL DEFAULT 0,          -- 1..N, siempre normalizado (sin empates)
+  promocional INTEGER NOT NULL DEFAULT 0,    -- 1 = la landing la destaca sobre el resto
+  temporal INTEGER NOT NULL DEFAULT 0,       -- 1 = tiene vigencia (se oculta sola al vencer)
+  desde TEXT NOT NULL DEFAULT '',            -- ISO con offset (ej 2026-10-18T00:00:00-03:00). Vacío = sin inicio
+  hasta TEXT NOT NULL DEFAULT ''             -- ISO con offset. Obligatorio si temporal = 1
 );
 
 CREATE TABLE IF NOT EXISTS productos (

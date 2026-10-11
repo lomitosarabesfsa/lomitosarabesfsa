@@ -22,6 +22,7 @@ lomitosarabesfsa/
 │   ├── wrangler.toml             # Configuración del Worker
 │   ├── schema.sql                # Schema de D1 (tablas)
 │   ├── seed.sql                  # Datos iniciales (productos)
+│   ├── migrate-*.sql             # Migraciones para bases que ya existían
 │   ├── README.md                 # Documentación del deploy
 │   │
 │   ├── worker/
