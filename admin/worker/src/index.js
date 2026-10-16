@@ -24,6 +24,11 @@ function jsonError(message, status = 400) {
 
 const ALLOWED_ORIGINS = [
   'https://lomitosarabesfsa.pages.dev',
+  // Espejo del mismo repo publicado en GitHub Pages. Sin esto, la landing
+  // servida desde lomitosarabesfsa.github.io recibe /api/menu sin cabecera
+  // Access-Control-Allow-Origin y el navegador la bloquea: el comensal ve
+  // "Error al cargar el menú. Por favor actualiza la página."
+  'https://lomitosarabesfsa.github.io',
   'http://localhost:8787',
   'http://localhost:3000',
   'http://localhost:3001',
@@ -39,6 +44,9 @@ function getCorsOrigin(request) {
 function corsHeaders(request) {
   return {
     'Access-Control-Allow-Origin': getCorsOrigin(request),
+    // La respuesta cambia según el Origin que la pide: sin Vary, una caché
+    // intermedia podría servir a un origen la cabecera calculada para otro.
+    'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Credentials': 'true',

@@ -33,6 +33,20 @@
       })();
     </script>
     
+    <!-- Espejo de GitHub Pages: el sitio oficial es pages.dev. Quien entre por
+         lomitosarabesfsa.github.io/lomitosarabesfsa/ (el link viejo que ya
+         circuló) va al sitio real conservando la ruta. Va acá arriba, antes de
+         pintar nada, para que no haya parpadeo ni un menú roto. -->
+    <script>
+      (function () {
+        if (!/(^|\.)github\.io$/i.test(location.hostname)) return;
+        var prefijo = '/lomitosarabesfsa';
+        var ruta = location.pathname.indexOf(prefijo) === 0 ? location.pathname.slice(prefijo.length) : location.pathname;
+        if (!ruta || ruta === '/index.html') ruta = '/';
+        location.replace('https://lomitosarabesfsa.pages.dev' + ruta + location.search + location.hash);
+      })();
+    </script>
+
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z75FKBBJ44"></script>
     <script>

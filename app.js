@@ -1061,10 +1061,91 @@
         }
 
         // ============================================================
-        //  CACHE DEL MENÚ (localStorage con TTL)
-        //  Muestra el menú al instante en visitas siguientes y resiste
-        //  a redes lentas o navegadores embebidos (Instagram/Facebook).
+        //  CARGA DEL MENÚ RESISTENTE A FALLOS DE RED
+        //  La carta es la razón de ser del sitio: un corte de red, un
+        //  webview de Instagram o un error pasajero de la API no deben
+        //  dejar al comensal con la pantalla muerta. Por eso: timeout,
+        //  reintentos y el último menú bueno guardado como respaldo.
         // ============================================================
+        const MENU_CACHE_KEY = 'lomitos_menu_cache';
+        const MENU_CACHE_TTL = 12 * 60 * 60 * 1000;   // 12 h
+        const MENU_TIMEOUT_MS = 8000;                 // ni colgado ni eterno
+        const MENU_INTENTOS = 3;
+
+        function guardarMenuCache(data) {
+            try {
+                localStorage.setItem(MENU_CACHE_KEY, JSON.stringify({ t: Date.now(), data }));
+            } catch (e) { /* modo privado o cuota llena: no es crítico */ }
+        }
+
+        function leerMenuCache() {
+            try {
+                const cache = JSON.parse(localStorage.getItem(MENU_CACHE_KEY) || 'null');
+                if (!cache || !cache.data || !Array.isArray(cache.data.categorias)) return null;
+                if (Date.now() - cache.t > MENU_CACHE_TTL) return null;
+                return cache.data;
+            } catch (e) { return null; }
+        }
+
+        // Un intento contra la API, con corte por timeout: en mobile una
+        // conexión que se cuelga no debe dejar el esqueleto para siempre.
+        async function pedirMenu() {
+            const ctrl = new AbortController();
+            const corte = setTimeout(() => ctrl.abort(), MENU_TIMEOUT_MS);
+            try {
+                const res = await fetch(CONFIG.API_URL, { cache: 'no-store', signal: ctrl.signal });
+                if (!res.ok) throw new Error('HTTP error ' + res.status);
+                return await res.json();
+            } finally {
+                clearTimeout(corte);
+            }
+        }
+
+        // Con reintentos: devuelve true si la carta quedó en pantalla.
+        async function cargarMenu() {
+            for (let intento = 1; intento <= MENU_INTENTOS; intento++) {
+                try {
+                    const data = await pedirMenu();
+                    procesarMenuJSON(data);
+                    guardarMenuCache(data);
+                    return true;
+                } catch (error) {
+                    console.error('Error al cargar productos (intento ' + intento + '/' + MENU_INTENTOS + '):', error);
+                    if (intento < MENU_INTENTOS) await new Promise(r => setTimeout(r, 600 * intento));
+                }
+            }
+            return false;
+        }
+
+        // Respaldo: el último menú que sí llegó, en vez de una pantalla muerta.
+        function mostrarMenuGuardado() {
+            const respaldo = leerMenuCache();
+            if (!respaldo) return false;
+            procesarMenuJSON(respaldo);
+            showToast('Sin conexión con el menú: te mostramos el último guardado.', 'info', 5000);
+            return true;
+        }
+
+        function mostrarErrorMenu() {
+            const container = document.getElementById('carta-container');
+            if (!container) return;
+            // Sin menú, la barra de chips se queda con los placeholders
+            // grises: mejor ocultarla para que el estado se vea intencional.
+            const chipsBar = document.getElementById('carta-chips');
+            if (chipsBar) chipsBar.style.display = 'none';
+            container.innerHTML = '<p style="color: var(--text-muted); text-align: center; width: 100%; padding: 40px 0 12px;">'
+                + 'No pudimos cargar el menú. Revisá tu conexión e intentá otra vez.</p>'
+                + '<button type="button" id="btn-reintentar-menu" style="display: block; margin: 0 auto 40px; padding: 12px 26px; border: 0; border-radius: 999px; background: var(--primary); color: #121212; font-weight: 700; cursor: pointer;">Reintentar</button>';
+            const btn = document.getElementById('btn-reintentar-menu');
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                btn.textContent = 'Cargando…';
+                if (await cargarMenu()) { reconciliarCarrito(); return; }
+                if (mostrarMenuGuardado()) { reconciliarCarrito(); return; }
+                btn.disabled = false;
+                btn.textContent = 'Reintentar';
+            });
+        }
 
 
         // ============================================================
@@ -1234,17 +1315,13 @@
                 }
             });
 
-            // Load menu from API
-            try {
-                const response = await fetch(CONFIG.API_URL, { cache: "no-store" });
-                if (!response.ok) throw new Error("HTTP error " + response.status);
-                procesarMenuJSON(await response.json());
+            // Load menu from API: reintentos + respaldo del último menú bueno
+            if (await cargarMenu()) {
                 reconciliarCarrito();
-            } catch (error) {
-                console.error("Error al cargar productos:", error);
-                if (!productosDB.length) {
-                    document.getElementById('carta-container').innerHTML = '<p style="color: #ef4444; text-align: center; width: 100%; padding: 40px 0;">Error al cargar el menú. Por favor actualiza la página.</p>';
-                }
+            } else if (mostrarMenuGuardado()) {
+                reconciliarCarrito();
+            } else {
+                mostrarErrorMenu();
             }
         });
         // ============================================================

@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel — Lomitos Árabes FSA</title>
+  <!-- Espejo de GitHub Pages: el panel oficial es pages.dev. Entrar a
+       administrar por el link viejo no tiene sentido (y ahí el repo queda
+       expuesto), así que mandamos al sitio real conservando la ruta. -->
+  <script>
+    (function () {
+      if (!/(^|\.)github\.io$/i.test(location.hostname)) return;
+      var prefijo = '/lomitosarabesfsa';
+      var ruta = location.pathname.indexOf(prefijo) === 0 ? location.pathname.slice(prefijo.length) : location.pathname;
+      location.replace('https://lomitosarabesfsa.pages.dev' + (ruta || '/') + location.search + location.hash);
+    })();
+  </script>
   <link rel="stylesheet" href="styles.css">
 
 <body>

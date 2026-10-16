@@ -15,9 +15,12 @@ const ASSETS_TO_CACHE = [
 // Install — cache core assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      // allSettled y no addAll: si un solo asset falla (por ejemplo las fuentes
+      // de Google bloqueadas por la red del cliente), el SW igual queda
+      // instalado y el sitio conserva su respaldo offline.
+      Promise.allSettled(ASSETS_TO_CACHE.map((url) => cache.add(url)))
+    )
   );
   self.skipWaiting();
 });
@@ -100,6 +103,13 @@ self.addEventListener('fetch', (event) => {
         if (networkResponse.ok) {
           const clone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return networkResponse;
+        }
+        // 5xx del hosting: mejor el HTML guardado que una pantalla de error
+        if (networkResponse.status >= 500) {
+          return caches.match(event.request, { ignoreSearch: true })
+            .then((cached) => cached || caches.match(new URL('./index.html', self.registration.scope)))
+            .then((cached) => cached || networkResponse);
         }
         return networkResponse;
       }).catch(() => caches.match(event.request, { ignoreSearch: true }).then((cached) =>

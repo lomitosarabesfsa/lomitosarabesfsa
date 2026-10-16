@@ -88,6 +88,8 @@ const MENU = {
 
 // ---------- Servidores ----------
 let appVersion = 'A';
+let apiCaida = false;   // interruptor del test de resiliencia (Fase 4)
+let apiHits = 0;        // consultas recibidas en /api/menu
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml' };
 
 async function serveStatic(req, res) {
@@ -112,7 +114,16 @@ async function serveStatic(req, res) {
 }
 
 function serveApi(req, res) {
-  res.writeHead(new URL(req.url, 'http://x').pathname === '/api/menu' ? 200 : 404, {
+  const esMenu = new URL(req.url, 'http://x').pathname === '/api/menu';
+  if (esMenu) apiHits++;
+  // Simula la API caída: es el escenario que el comensal ve como
+  // "la web no carga el menú" cuando la red o la API fallan un instante.
+  if (esMenu && apiCaida) {
+    res.writeHead(500, { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'API caída (test)' }));
+    return;
+  }
+  res.writeHead(esMenu ? 200 : 404, {
     'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8',
   });
   res.end(JSON.stringify(MENU));
@@ -299,6 +310,48 @@ const ESTADO_SW = `(async () => {
   };
 })()`;
 
+// ---------- Escenarios de resiliencia (Fase 4) ----------
+// Con la API caída: espera la carta y reporta qué quedó en pantalla.
+const ESPERA_CARTA = `(async () => {
+  ${HELPERS}
+  const out = {};
+  // Ojo: el HTML trae un esqueleto de carga con la misma clase .carta-section,
+  // así que hay que esperar contenido real (productos) o el mensaje de error.
+  try { await waitFor('.producto-fila-add, #btn-reintentar-menu', 15000); } catch (e) { out.timeout = e.message; }
+  out.secciones = document.querySelectorAll('#carta-container .carta-section').length;
+  out.productos = document.querySelectorAll('.producto-fila-add').length;
+  out.esqueleto = !!document.querySelector('#carta-container .skeleton');
+  out.botonReintentar = !!document.getElementById('btn-reintentar-menu');
+  out.aviso = toast().trim();
+  out.cache = !!localStorage.getItem('lomitos_menu_cache');
+  return out;
+})()`;
+
+// Con la API caída y sin menú guardado: espera el mensaje con Reintentar.
+const ESPERA_ERROR = `(async () => {
+  ${HELPERS}
+  const out = {};
+  try { await waitFor('#btn-reintentar-menu', 15000); } catch (e) { out.timeout = e.message; }
+  out.botonReintentar = !!document.getElementById('btn-reintentar-menu');
+  out.productos = document.querySelectorAll('.producto-fila-add').length;
+  return out;
+})()`;
+
+// Toca "Reintentar" y espera el resultado de los 3 intentos + respaldo.
+const REINTENTAR = `(async () => {
+  ${HELPERS}
+  const btn = document.getElementById('btn-reintentar-menu');
+  if (!btn) return { noBoton: true };
+  click(btn);
+  await sleep(5000);
+  const actual = document.getElementById('btn-reintentar-menu');
+  return {
+    habilitado: actual ? actual.disabled === false : null,
+    secciones: document.querySelectorAll('#carta-container .carta-section').length,
+    productos: document.querySelectorAll('.producto-fila-add').length,
+  };
+})()`;
+
 // ---------- Runner ----------
 let chrome, siteServer, apiServer, page;
 const evaluate = async (expr) => {
@@ -413,6 +466,35 @@ try {
     assert('la caché se revalidó sola', est.cacheAppJs === 'B', 'caché: ' + est.cacheAppJs);
   }
   assert('el service worker quedó controlando la página', est.controlado, 'caches: ' + JSON.stringify(est.caches));
+
+  // ── Fase 4: la API se cae → la carta no debe morir ──
+  log('\n━━━ Resiliencia: la API no responde ━━━');
+  apiCaida = true;
+  const hitsAntes = apiHits;
+  await load();
+  await sleep(500);
+  const conRespaldo = await evaluate(ESPERA_CARTA);
+  log(`  · con la API caída: ${conRespaldo.secciones} secciones y ${conRespaldo.productos} productos visibles`);
+  log(`  · respaldo en localStorage: ${conRespaldo.cache ? 'sí' : 'no'} · esqueleto visible: ${conRespaldo.esqueleto ? 'sí' : 'no'} · aviso: ${conRespaldo.aviso ? 'sí' : 'no'}`);
+  assert('con la API caída el comensal sigue viendo el menú guardado', conRespaldo.secciones > 0 && conRespaldo.productos > 0, `secciones=${conRespaldo.secciones} productos=${conRespaldo.productos}`);
+  assert('no aparece la pantalla de error si hay menú guardado', conRespaldo.botonReintentar === false);
+  assert('avisa que el menú viene del respaldo', /último guardado|sin conexión/i.test(conRespaldo.aviso), conRespaldo.aviso.slice(0, 70));
+  assert('reintenta la consulta antes de rendirse', apiHits - hitsAntes >= 2, (apiHits - hitsAntes) + ' intentos');
+
+  log('\n━━━ Resiliencia: primer ingreso y la API caída ━━━');
+  await evaluate("localStorage.removeItem('lomitos_menu_cache')");
+  await load();
+  await sleep(500);
+  const sinRespaldo = await evaluate(ESPERA_ERROR);
+  assert('sin menú guardado ofrece Reintentar (no pide recargar a mano)', sinRespaldo.botonReintentar === true, sinRespaldo.timeout || '');
+  assert('sin datos no inventa productos', sinRespaldo.productos === 0, 'productos=' + sinRespaldo.productos);
+
+  const reintentoFallido = await evaluate(REINTENTAR);
+  assert('Reintentar no deja el botón trabado si la API sigue caída', reintentoFallido.habilitado === true, JSON.stringify(reintentoFallido));
+
+  apiCaida = false;
+  const recuperado = await evaluate(REINTENTAR);
+  assert('Reintentar recupera la carta sin recargar la página', recuperado.secciones > 0 && recuperado.productos > 0, JSON.stringify(recuperado));
 
   // ── Errores de JS ──
   const errores = [...new Set([...m.errores, ...h.errores, ...excepciones])];

@@ -375,6 +375,32 @@ describe('CORS', () => {
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://lomitosarabesfsa.pages.dev');
   });
 
+  // Bug real: la landing también se publica en GitHub Pages
+  // (lomitosarabesfsa.github.io/lomitosarabesfsa/). Si ese origen no está en
+  // ALLOWED_ORIGINS, la API responde 200 sin ACAO, el navegador bloquea la
+  // respuesta y el comensal ve "Error al cargar el menú".
+  it('debería retornar CORS headers para el espejo de GitHub Pages', async () => {
+    const res = await makeRequest('/api/menu', 'GET', null, {
+      Origin: 'https://lomitosarabesfsa.github.io',
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://lomitosarabesfsa.github.io');
+  });
+
+  it('no debería habilitar CORS para un origen desconocido', async () => {
+    const res = await makeRequest('/api/menu', 'GET', null, {
+      Origin: 'https://sitio-ajeno.example',
+    });
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBeFalsy();
+  });
+
+  it('debería declarar Vary: Origin (la respuesta depende del origen)', async () => {
+    const res = await makeRequest('/api/menu', 'GET', null, {
+      Origin: 'https://lomitosarabesfsa.pages.dev',
+    });
+    expect(res.headers.get('Vary')).toContain('Origin');
+  });
+
   it('debería manejar OPTIONS (preflight)', async () => {
     const res = await makeRequest('/api/menu', 'OPTIONS', null, {
       Origin: 'https://lomitosarabesfsa.pages.dev',
