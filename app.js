@@ -294,6 +294,9 @@
             renderizarCarta();
             renderPromos();
             renderGallery();
+            // Re-renderizar horarios con los datos actualizados desde la API
+            renderFooterHours();
+            checkHorario();
         }
 
         // ============================================================
