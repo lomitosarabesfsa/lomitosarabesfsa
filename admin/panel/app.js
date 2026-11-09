@@ -704,25 +704,38 @@ function renderHorarios() {
   const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const cont = $('lista-horarios'); cont.innerHTML = '';
   dias.forEach((nombre, i) => {
-    const h = horarios[i]; const cerrado = !h;
-    const div = document.createElement('div'); div.className = 'horario-row';
+    const h = horarios[i]; const abierto = !!h;
+    const div = document.createElement('div');
+    div.className = 'horario-row' + (abierto ? '' : ' cerrado');
     div.innerHTML = `<span class="dia">${nombre}</span>
-      <input type="time" value="${h?h.abre:''}" data-dia="${i}" data-tipo="abre" ${cerrado?'disabled':''}>
-      <input type="time" value="${h?h.cierra:''}" data-dia="${i}" data-tipo="cierra" ${cerrado?'disabled':''}>
-      <label class="cerrado-chk"><input type="checkbox" ${cerrado?'checked':''} onchange="toggleCerrado(${i},this.checked)"> Cerrado</label>`;
+      <input type="time" value="${h?h.abre:''}" data-dia="${i}" data-tipo="abre" ${abierto?'':'disabled'}>
+      <input type="time" value="${h?h.cierra:''}" data-dia="${i}" data-tipo="cierra" ${abierto?'':'disabled'}>
+      <label class="day-toggle" title="${abierto?'Abierto — clic para cerrar':'Cerrado — clic para abrir'}">
+        <input type="checkbox" ${abierto?'checked':''} onchange="toggleAbierto(${i},this.checked)">
+        <span class="day-toggle-track"></span>
+        <span class="day-toggle-label" style="color:${abierto?'var(--success)':'var(--danger)'}">${abierto?'Abierto':'Cerrado'}</span>
+      </label>`;
     cont.appendChild(div);
   });
 }
-function toggleCerrado(dia, cerrado) {
-  const a = document.querySelector(`input[data-dia="${dia}"][data-tipo="abre"]`);
-  const c = document.querySelector(`input[data-dia="${dia}"][data-tipo="cierra"]`);
-  a.disabled = c.disabled = cerrado;
-  if (cerrado) delete horarios[dia]; else horarios[dia] = {abre:a.value||'20:00',cierra:c.value||'00:00'};
+function toggleAbierto(dia, abierto) {
+  const row = document.querySelector(`input[data-dia="${dia}"][data-tipo="abre"]`).closest('.horario-row');
+  const a = row.querySelector(`input[data-tipo="abre"]`);
+  const c = row.querySelector(`input[data-tipo="cierra"]`);
+  const lbl = row.querySelector('.day-toggle-label');
+  a.disabled = c.disabled = !abierto;
+  row.classList.toggle('cerrado', !abierto);
+  lbl.textContent = abierto ? 'Abierto' : 'Cerrado';
+  lbl.style.color = abierto ? 'var(--success)' : 'var(--danger)';
+  row.querySelector('.day-toggle').title = abierto ? 'Abierto — clic para cerrar' : 'Cerrado — clic para abrir';
+  if (abierto) horarios[dia] = {abre: a.value||'20:00', cierra: c.value||'00:00'};
+  else delete horarios[dia];
 }
 async function guardarHorarios() {
   document.querySelectorAll('.horario-row').forEach(row => {
-    const dia = parseInt(row.querySelector('input[data-tipo="abre"]').dataset.dia,10);
-    if (row.querySelector('input[type="checkbox"]').checked) { delete horarios[dia]; return; }
+    const dia = parseInt(row.querySelector('input[data-tipo="abre"]').dataset.dia, 10);
+    const abierto = row.querySelector('input[type="checkbox"]').checked;
+    if (!abierto) { delete horarios[dia]; return; }
     horarios[dia] = { abre: row.querySelector('input[data-tipo="abre"]').value||'20:00', cierra: row.querySelector('input[data-tipo="cierra"]').value||'00:00' };
   });
   await withLoading('btn-guardar-horarios', async () => {
