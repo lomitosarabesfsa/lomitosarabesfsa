@@ -1,13 +1,14 @@
-const CACHE_NAME = 'lomitos-fsa-v19';
+const CACHE_NAME = 'lomitos-fsa-v20';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/styles.css',
   '/app.js',
 
-  '/assets/logoheader.jpeg',
-  '/assets/background.jpeg',
-  '/assets/ilustrativo.jpeg',
+  // Versiones livianas: el precache baja ~240 KB en lugar de ~7 MB
+  '/assets/background.webp',
+  '/assets/logo.webp',
+  '/assets/apple-touch-icon.png',
   '/manifest.json',
   'https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;600;800&display=swap'
 ];

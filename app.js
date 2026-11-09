@@ -780,16 +780,70 @@
             return dir.length > 0;
         }
 
+        // Errores en línea del checkout. Se muestran al intentar avanzar
+        // (no mientras el cliente escribe) y el foco va al campo que falta.
+        function setErrorPaso(errorId, mensaje, campo) {
+            const err = document.getElementById(errorId);
+            if (err) {
+                err.textContent = mensaje || '';
+                err.hidden = !mensaje;
+            }
+            if (campo) {
+                if (mensaje) {
+                    campo.setAttribute('aria-invalid', 'true');
+                    try { campo.focus(); } catch (e) { /* campo no enfocable */ }
+                } else {
+                    campo.removeAttribute('aria-invalid');
+                }
+            }
+        }
+
+        function limpiarErroresCheckout() {
+            setErrorPaso('error-direccion', '', document.getElementById('form-direccion'));
+            setErrorPaso('error-nombre', '', document.getElementById('form-nombre'));
+            const grupo = document.getElementById('grupo-pago');
+            setErrorPaso('error-pago', '', grupo ? grupo.querySelector('input') : null);
+            if (grupo) grupo.classList.remove('is-invalid');
+        }
+
+        function validarPasoActual() {
+            if (pasoCheckout === 1) {
+                if (metodoEntrega === 'Retiro en local') return true;
+                const dirInput = document.getElementById('form-direccion');
+                if (!(dirInput.value || '').trim()) {
+                    setErrorPaso('error-direccion', 'Ingresá calle y número para que el envío llegue.', dirInput);
+                    return false;
+                }
+            }
+            if (pasoCheckout === 2 && !pagoCheckout) {
+                const grupo = document.getElementById('grupo-pago');
+                setErrorPaso('error-pago', 'Elegí cómo vas a pagar para seguir.', grupo ? grupo.querySelector('input') : null);
+                if (grupo) grupo.classList.add('is-invalid');
+                return false;
+            }
+            return true;
+        }
+
+        // aria-disabled en vez de [disabled]: el botón conserva foco y click,
+        // así se puede explicar qué falta cuando el cliente lo toca.
         function actualizarBotonPaso() {
             const btnSiguiente = document.getElementById('btn-paso-siguiente');
             const btnEnviar = document.getElementById('btn-enviar-pedido');
-            if (pasoCheckout === 1 && btnSiguiente) {
-                btnSiguiente.disabled = !paso1Valido();
-            } else if (pasoCheckout === 2 && btnSiguiente) {
-                btnSiguiente.disabled = !pagoCheckout;
-            } else if (pasoCheckout === 3 && btnEnviar) {
-                const nombre = (document.getElementById('form-nombre').value || '').trim();
-                btnEnviar.disabled = !nombre;
+            const dirOk = paso1Valido();
+            const nombreOk = !!(document.getElementById('form-nombre').value || '').trim();
+            if (btnSiguiente) {
+                btnSiguiente.setAttribute('aria-disabled', String(pasoCheckout === 2 ? !pagoCheckout : !dirOk));
+            }
+            if (btnEnviar) {
+                btnEnviar.setAttribute('aria-disabled', String(!nombreOk));
+            }
+            // Al completarse el dato, el aviso desaparece solo
+            if (dirOk) setErrorPaso('error-direccion', '', document.getElementById('form-direccion'));
+            if (nombreOk) setErrorPaso('error-nombre', '', document.getElementById('form-nombre'));
+            if (pagoCheckout) {
+                const grupo = document.getElementById('grupo-pago');
+                setErrorPaso('error-pago', '', grupo ? grupo.querySelector('input') : null);
+                if (grupo) grupo.classList.remove('is-invalid');
             }
         }
 
@@ -839,6 +893,7 @@
             });
             const campoDireccion = document.getElementById('campo-direccion');
             if (campoDireccion) campoDireccion.style.display = 'block';
+            limpiarErroresCheckout();
             irAPaso(1);
         }
 
@@ -1178,15 +1233,19 @@
             const notas = (document.getElementById('form-notas').value || '').trim();
 
             if (!nombre) {
-                showToast('Por favor, ingresá tu nombre.', 'warning');
+                setErrorPaso('error-nombre', 'Necesitamos tu nombre para identificar el pedido.', document.getElementById('form-nombre'));
                 return;
             }
             if (metodoEntrega === 'Envío a domicilio' && !direccion) {
-                showToast('Por favor, ingresá tu dirección.', 'warning');
+                irAPaso(1);
+                setErrorPaso('error-direccion', 'Ingresá calle y número para que el envío llegue.', document.getElementById('form-direccion'));
                 return;
             }
             if (!pagoCheckout) {
-                showToast('Elegí un método de pago.', 'warning');
+                irAPaso(2);
+                const grupoPago = document.getElementById('grupo-pago');
+                setErrorPaso('error-pago', 'Elegí cómo vas a pagar para seguir.', grupoPago ? grupoPago.querySelector('input') : null);
+                if (grupoPago) grupoPago.classList.add('is-invalid');
                 return;
             }
 
@@ -1813,7 +1872,7 @@
                     break;
                 // --- Carrito y checkout ---
                 case 'siguiente-paso':
-                    if (pasoCheckout < 3) irAPaso(pasoCheckout + 1);
+                    if (validarPasoActual() && pasoCheckout < 3) irAPaso(pasoCheckout + 1);
                     break;
                 case 'paso-atras':
                     if (pasoCheckout > 1) irAPaso(pasoCheckout - 1);

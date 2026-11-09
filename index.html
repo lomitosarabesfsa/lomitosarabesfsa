@@ -11,12 +11,12 @@
     <meta property="og:description" content="¿Antojo de un buen lomito o shawarma en Formosa? Pide ahora por WhatsApp.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://lomitosarabesfsa.pages.dev/">
-    <meta property="og:image" content="https://lomitosarabesfsa.pages.dev/assets/background.jpeg">
+    <meta property="og:image" content="https://lomitosarabesfsa.pages.dev/assets/og-image.jpg">
     <meta property="og:locale" content="es_AR">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Lomitos Árabes en Formosa | Delivery">
     <meta name="twitter:description" content="¿Antojo de un buen lomito o shawarma en Formosa? Pide ahora por WhatsApp.">
-    <meta name="twitter:image" content="https://lomitosarabesfsa.pages.dev/assets/background.jpeg">
+    <meta name="twitter:image" content="https://lomitosarabesfsa.pages.dev/assets/og-image.jpg">
     <meta name="theme-color" content="#F57C00">
     <meta name="google-site-verification" content="2R-Vm-4SmtY5lG5pTtzDYtoxjVfil7qvMNvJFb23N14" />
 
@@ -60,10 +60,10 @@
     <link rel="canonical" href="https://lomitosarabesfsa.pages.dev/">
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="./assets/logoheader.jpeg">
+    <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="image" href="./assets/background.jpeg">
+    <link rel="preload" as="image" href="./assets/background.webp" type="image/webp">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;600;800&display=swap"
         rel="stylesheet">
     <script type="application/ld+json">
@@ -71,7 +71,7 @@
       "@context": "https://schema.org",
       "@type": "Restaurant",
       "name": "Lomitos Árabes FSA",
-      "image": "https://lomitosarabesfsa.pages.dev/assets/logoheader.jpeg",
+      "image": "https://lomitosarabesfsa.pages.dev/assets/og-image.jpg",
       "url": "https://lomitosarabesfsa.pages.dev/",
       "telephone": "+5493704218188",
       "address": {
@@ -110,7 +110,7 @@
     <nav id="navbar">
         <div class="nav-left">
             <a href="#" class="nav-logo">
-                <img src="./assets/logoheader.jpeg" alt="" onerror="this.style.display='none'">
+                <img src="./assets/logo.webp" alt="" onerror="this.style.display='none'">
                 <span class="nav-logo-text"><span>LOMITO</span> ÁRABE FSA</span>
             </a>
             <div class="status-badge cerrado" id="status-badge">
@@ -420,8 +420,10 @@
                     <div id="campo-direccion">
                         <div class="form-group">
                             <label for="form-direccion">Dirección Exacta</label>
-                            <input type="text" id="form-direccion" placeholder="Calle y número" autocomplete="street-address">
+                            <input type="text" id="form-direccion" placeholder="Calle y número" autocomplete="street-address"
+                                aria-describedby="error-direccion">
                         </div>
+                        <p class="form-error" id="error-direccion" role="alert" hidden></p>
                         <div class="form-row form-row-mt">
                             <div class="form-group">
                                 <label for="form-barrio">Barrio</label>
@@ -438,7 +440,7 @@
                 <!-- Etapa 2: ¿Cómo pagás? -->
                 <div class="checkout-paso" data-paso="2">
                     <p class="paso-titulo">¿Cómo vas a pagar?</p>
-                    <div class="opciones-cards" role="radiogroup" aria-label="Método de pago">
+                    <div class="opciones-cards" role="radiogroup" aria-label="Método de pago" id="grupo-pago" aria-describedby="error-pago">
                         <label class="option-card">
                             <input type="radio" name="pago" value="Efectivo">
                             <span class="oc-icon">💵</span>
@@ -464,6 +466,7 @@
                             </span>
                         </label>
                     </div>
+                    <p class="form-error" id="error-pago" role="alert" hidden></p>
                 </div>
 
                 <!-- Etapa 3: datos + confirmación -->
@@ -471,8 +474,10 @@
                     <p class="paso-titulo">Tus datos</p>
                     <div class="form-group">
                         <label for="form-nombre">Tu Nombre</label>
-                        <input type="text" id="form-nombre" placeholder="Ej: Juan Pérez" autocomplete="name">
+                        <input type="text" id="form-nombre" placeholder="Ej: Juan Pérez" autocomplete="name"
+                            aria-describedby="error-nombre">
                     </div>
+                    <p class="form-error" id="error-nombre" role="alert" hidden></p>
                     <div class="form-group">
                         <label for="form-notas">Notas / Aclaraciones</label>
                         <textarea id="form-notas" rows="2" placeholder="Opcional: sin cebolla, tocar timbre..."></textarea>

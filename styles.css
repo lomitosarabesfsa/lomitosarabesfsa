@@ -467,7 +467,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-image: url('./assets/background.jpeg');
+            background-image: url('./assets/background.webp');
             background-size: cover;
             background-position: center;
             opacity: 0.6;
@@ -1736,6 +1736,25 @@
             background: #1EBE53;
         }
 
+        /* Falta completar: el botón sigue siendo clickeable y focusable
+           (un [disabled] no recibe foco ni se anuncia); al tocarlo se
+           explica qué falta al lado del campo. */
+        .checkout-btn[aria-disabled="true"] {
+            background: rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.78);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+        }
+
+        .checkout-btn[aria-disabled="true"]:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        [data-theme="light"] .checkout-btn[aria-disabled="true"] {
+            background: #E4E4E4;
+            color: #555;
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+        }
+
         /* Checkout Form */
         .cart-step {
             display: none;
@@ -1786,6 +1805,37 @@
         .form-group textarea:focus {
             border-color: var(--primary-text);
             /* Sin 'outline: none': el foco debe verse también con teclado (ver :focus-visible) */
+        }
+
+        /* Mensajes de validación del checkout: visibles, junto al campo y
+           anunciados por lectores de pantalla (role="alert" en el HTML). */
+        .form-error {
+            margin: 8px 0 0;
+            font-size: 0.85rem;
+            font-weight: 600;
+            line-height: 1.35;
+            color: #FF8A80;
+        }
+
+        .form-error[hidden] {
+            display: none;
+        }
+
+        .form-group input[aria-invalid="true"] {
+            border-color: #FF8A80;
+            box-shadow: 0 0 0 1px rgba(255, 138, 128, 0.35);
+        }
+
+        .opciones-cards.is-invalid .option-card {
+            border-color: rgba(255, 138, 128, 0.6);
+        }
+
+        [data-theme="light"] .form-error {
+            color: #B3261E;
+        }
+
+        [data-theme="light"] .form-group input[aria-invalid="true"] {
+            border-color: #B3261E;
         }
 
         .form-row {
