@@ -131,56 +131,99 @@
             }
         }
 
+        // ─── HORARIO: INICIO ───
+        // La ventana de un día pertenece al día en que ABRE: viernes de
+        // 20:00 a 02:00 sigue abierto el sábado a la 01:00. Por eso el
+        // estado se resuelve mirando el día actual y la cola del anterior,
+        // nunca sólo la fila del día del reloj.
+        function minutosDeHHMM(valor) {
+            const m = /^(\d{1,2}):(\d{2})$/.exec(String(valor == null ? '' : valor).trim());
+            if (!m) return null;
+            const h = Number(m[1]), min = Number(m[2]);
+            if (!Number.isFinite(h) || !Number.isFinite(min) || h > 23 || min > 59) return null;
+            return h * 60 + min;
+        }
+
+        // "00:00" como cierre es el final de ese mismo día (24:00), no el
+        // comienzo del siguiente. Si se leyera como 0, un local que cierra a
+        // medianoche quedaría abierto toda la madrugada siguiente.
+        function rangoDelDia(horario) {
+            if (!horario) return null;
+            const abre = minutosDeHHMM(horario.abre);
+            let cierra = minutosDeHHMM(horario.cierra);
+            if (abre === null || cierra === null) return null;
+            if (cierra === 0) cierra = 1440;
+            return { abre, cierra };
+        }
+
+        function hhmm(minutos) {
+            const m = ((minutos % 1440) + 1440) % 1440;
+            return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+        }
+
+        // Estado de atención en un instante: { abierto, cierra?, proxima? }
+        // `dia` 0..6 (0 = domingo) y `minutos` 0..1439, hora de Formosa.
+        function estadoHorario(dia, minutos) {
+            const hoy = rangoDelDia(CONFIG.HORARIO[dia]);
+            if (hoy) {
+                // Misma jornada: dentro del rango, o desde que abre cuando el
+                // cierre cae después de medianoche (la cola la resuelve el
+                // chequeo del día anterior, abajo).
+                if (hoy.cierra > hoy.abre) {
+                    if (minutos >= hoy.abre && minutos < hoy.cierra) return { abierto: true, cierra: hoy.cierra };
+                } else if (minutos >= hoy.abre) {
+                    return { abierto: true, cierra: hoy.cierra };
+                }
+            }
+
+            // Cola de la ventana que abrió ayer y cierra después de medianoche.
+            const ayer = rangoDelDia(CONFIG.HORARIO[(dia + 6) % 7]);
+            if (ayer && ayer.cierra <= ayer.abre && minutos < ayer.cierra) {
+                return { abierto: true, cierra: ayer.cierra };
+            }
+
+            // Cerrado: primera apertura desde ahora, con hasta una semana de vista.
+            for (let i = 0; i < 8; i++) {
+                const d = (dia + i) % 7;
+                const r = rangoDelDia(CONFIG.HORARIO[d]);
+                if (!r) continue;
+                if (i === 0 && minutos < r.abre) return { abierto: false, proxima: { dia: d, abre: r.abre, hoy: true } };
+                if (i > 0) return { abierto: false, proxima: { dia: d, abre: r.abre, hoy: false } };
+            }
+            return { abierto: false, proxima: null };
+        }
+        // ─── HORARIO: FIN ───
+
         function checkHorario() {
             const { dia, hora, minutos } = getFormosaTime();
-            const horaActual = hora * 60 + minutos;
+            const estado = estadoHorario(dia, hora * 60 + minutos);
 
-            const horario = CONFIG.HORARIO[dia];
             const badge = document.getElementById('status-badge');
             const text = document.getElementById('status-text');
             const heroCta = document.getElementById('hero-cta');
 
-            if (!horario) {
-                badge.className = 'status-badge cerrado';
-                text.textContent = 'Cerrado hoy';
-                heroCta.classList.add('cerrado');
-                heroCta.textContent = 'Cerrado hoy';
-                heroCta.setAttribute('tabindex', '-1');
-                heroCta.setAttribute('aria-disabled', 'true');
-                return;
-            }
-
-            const [abreH, abreM] = horario.abre.split(':').map(Number);
-            const [cierraH, cierraM] = horario.cierra.split(':').map(Number);
-            const abreMin = abreH * 60 + abreM;
-            let cierraMin = cierraH * 60 + cierraM;
-
-            let abierto = false;
-            if (cierraMin <= abreMin) {
-                // Cierra después de medianoche
-                abierto = horaActual >= abreMin || horaActual < cierraMin;
-            } else {
-                abierto = horaActual >= abreMin && horaActual < cierraMin;
-            }
-
-            if (abierto) {
+            if (estado.abierto) {
                 badge.className = 'status-badge abierto';
-                text.textContent = `Abierto · Cierra ${horario.cierra}hs`;
+                text.textContent = `Abierto · Cierra ${hhmm(estado.cierra)}hs`;
                 heroCta.classList.remove('cerrado');
                 heroCta.textContent = 'Hacer mi pedido';
                 heroCta.href = '#menu';
                 heroCta.removeAttribute('tabindex');
                 heroCta.removeAttribute('aria-disabled');
-            } else {
-                badge.className = 'status-badge cerrado';
-                text.textContent = `Cerrado · Abre ${horario.abre}hs`;
-                heroCta.classList.add('cerrado');
-                heroCta.textContent = `Cerrado · Abre a las ${horario.abre}`;
-                heroCta.setAttribute('tabindex', '-1');
-                heroCta.setAttribute('aria-disabled', 'true');
+                return;
             }
-        }
 
+            const p = estado.proxima;
+            const cuando = !p ? 'Cerrado hoy'
+                : p.hoy ? `Abre ${hhmm(p.abre)}hs`
+                : `Abre ${CONFIG.DIAS[p.dia].substring(0, 3)} ${hhmm(p.abre)}hs`;
+            badge.className = 'status-badge cerrado';
+            text.textContent = `Cerrado · ${cuando}`;
+            heroCta.classList.add('cerrado');
+            heroCta.textContent = `Cerrado · ${cuando}`;
+            heroCta.setAttribute('tabindex', '-1');
+            heroCta.setAttribute('aria-disabled', 'true');
+        }
         function renderFooterHours() {
             const container = document.getElementById('footer-hours');
             let html = '';
@@ -1917,7 +1960,13 @@
         });
 
         if ('serviceWorker' in navigator) {
+            // Leído antes de registrar: en la primera visita el SW recién
+            // instalado toma el control (clients.claim) y dispara
+            // controllerchange. Sin este dato, el sitio se recargaba solo
+            // 1,5 s después de cargar con el cartel de "nueva versión".
+            const yaEstabaControlado = !!navigator.serviceWorker.controller;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!yaEstabaControlado) return;
                 showToast('¡Nueva versión disponible! Recargando…', 'info', 2000);
                 setTimeout(() => location.reload(), 1500);
             });

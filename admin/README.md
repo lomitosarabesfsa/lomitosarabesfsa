@@ -37,13 +37,20 @@ npx wrangler d1 create lomitos-db
 ```
 Copiar el `database_id` que imprime y pegarlo en `wrangler.toml` (línea `database_id = "..."`).
 
-### 3. Crear tablas + cargar los datos actuales de la planilla
+### 3. Crear la base y aplicar migraciones
+
 ```bash
-npx wrangler d1 execute lomitos-db --remote --file=schema.sql
+npm run db:apply -- --remote
 npx wrangler d1 execute lomitos-db --remote --file=seed.sql
 ```
-(`seed.sql` se generó con `node scripts/migrar-planilla.js` y contiene los 13 productos actuales.
-Para regenerarlo cuando quieras, borrá el archivo y volvé a correr el script.)
+
+`db:apply` aplica en orden los archivos de `migrations/` y los registra en la tabla
+`schema_migrations`. `seed.sql` son datos, no esquema: se carga aparte (se generó con
+`node scripts/migrar-planilla.js`).
+
+> **Si la base ya existía:** el esquema está al día pero sin registro. Se adopta una
+> sola vez con `npm run db:baseline -- --remote`, que antes verifica que el esquema
+> real esté completo. Desde ahí, el deploy del Worker no sale si el esquema está atrasado.
 
 ### 4. Configurar secretos (¡importante!)
 
@@ -116,9 +123,26 @@ Local: abrir `admin/panel/index.html` directamente en el navegador (es un archiv
 El panel ya apunta al Worker: `https://lomitos-api.gapersingula97.workers.dev`.
 **Entrar por primera vez con `admin / admin123` y cambiá la clave de inmediato** (secrets ADMIN_USER/ADMIN_PASS).
 
+## Migraciones
+
+El esquema vive en `admin/migrations/` (numerado, inmutable) y el registro en la tabla
+`schema_migrations`. No hay `schema.sql` paralelo: era la segunda fuente de verdad que
+se desactualizaba.
+
+| Comando | Qué hace |
+|---|---|
+| `npm run db:status -- --remote` | Muestra aplicadas / pendientes y si el esquema real está completo |
+| `npm run db:apply -- --remote` | Aplica las pendientes en orden y las registra |
+| `npm run db:check -- --remote` | Gate del deploy: sale con 1 si falta una migración o una tabla/columna |
+| `npm run db:baseline -- --remote` | Adopta una base existente sin re-ejecutar (solo si el esquema ya está completo) |
+
+Para un cambio de esquema nuevo: creá `migrations/0005_descripcion.sql` y corré `db:apply`.
+Nunca edites una migración ya aplicada: `db:check` compara el checksum y falla.
+Sin `--remote` todo apunta a la base local.
+
 ## Comandos útiles
 
-```bash
+```bash```bash
 # Redeployar la landing
 cd ..
 npx wrangler pages deploy . --project-name lomitosarabesfsa --branch main
@@ -156,3 +180,4 @@ cd admin && npx wrangler tail
 | "No autorizado" | Token expirado (12 h): hacer login de nuevo |
 | Landing no carga menú | Verificar que el Worker esté deployado y que `/api/menu` responda |
 | Pages deploy falla | Verificar que estás autenticado con `npx wrangler whoami` |
+| Deploy Worker falla en "Verificar esquema de D1" | Es el gate de drift: `npm run db:status -- --remote` muestra qué falta, `db:apply` lo aplica, y `db:baseline` adopta una base existente. |

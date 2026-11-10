@@ -49,24 +49,21 @@ export async function setup() {
   killExisting();
   await sleep(1000);
 
-  // Init D1 with schema
+  // Esquema + migraciones: la misma cadena que producción, no un schema.sql aparte.
   try {
-    execSync(`npx wrangler d1 execute lomitos-db-e2e --local --file=schema.sql --config wrangler.e2e.toml`, {
-      cwd: ADMIN_ROOT, timeout: 15000, stdio: 'pipe',
+    execSync('node scripts/migrar.mjs apply --local --db lomitos-db-e2e --config wrangler.e2e.toml', {
+      cwd: ADMIN_ROOT, timeout: 60000, stdio: 'pipe',
     });
   } catch (e) {
-    console.warn('   Schema init warning:', e.message?.slice(0, 100));
-  }
-
-  // schema.sql usa CREATE TABLE IF NOT EXISTS, así que una base local que ya
-  // existía se queda con el esquema viejo: hay que correr las migraciones.
-  // Si las columnas ya están, SQLite responde "duplicate column name" y se ignora.
-  try {
-    execSync(`npx wrangler d1 execute lomitos-db-e2e --local --file=migrate-categorias-promocional.sql --config wrangler.e2e.toml`, {
-      cwd: ADMIN_ROOT, timeout: 15000, stdio: 'pipe',
-    });
-  } catch (e) {
-    console.warn('   Migration note:', e.message?.slice(0, 100));
+    // Base local creada antes del registro de migraciones: se adopta el
+    // esquema actual (baseline exige que esté completo; si no, falla).
+    try {
+      execSync('node scripts/migrar.mjs baseline --local --db lomitos-db-e2e --config wrangler.e2e.toml', {
+        cwd: ADMIN_ROOT, timeout: 60000, stdio: 'pipe',
+      });
+    } catch (e2) {
+      console.warn('   Migraciones:', String(e2.message).slice(0, 200));
+    }
   }
 
   // Clean previous test data to avoid UNIQUE constraint errors on re-runs

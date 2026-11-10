@@ -284,16 +284,16 @@ async function getMenu(envLocal) {
   // promo vencida aunque nadie se acuerde de apagarla.
   const categorias = (await envLocal.DB.prepare('SELECT * FROM categorias ORDER BY orden, id').all()).results
     .filter(c => categoriaVigente(c));
-  const productos = (await envLocal.DB.prepare('SELECT * FROM productos WHERE activo = 1 ORDER BY orden').all()).results;
+  const productos = (await envLocal.DB.prepare('SELECT * FROM productos WHERE activo = 1 ORDER BY orden, id').all()).results;
   const promos = (await envLocal.DB.prepare('SELECT * FROM promos WHERE activa = 1').all()).results;
   const configRows = (await envLocal.DB.prepare('SELECT clave, valor FROM config').all()).results;
   const config = {};
   configRows.forEach(r => { try { config[r.clave] = JSON.parse(r.valor); } catch (e) { config[r.clave] = r.valor; } });
 
   // Modifier groups activos
-  const allGroups = (await envLocal.DB.prepare('SELECT * FROM modifier_groups WHERE activo = 1 ORDER BY orden').all()).results;
+  const allGroups = (await envLocal.DB.prepare('SELECT * FROM modifier_groups WHERE activo = 1 ORDER BY orden, id').all()).results;
   // Modifier options activos
-  const allOptions = (await envLocal.DB.prepare('SELECT * FROM modifier_options WHERE activo = 1 ORDER BY orden').all()).results;
+  const allOptions = (await envLocal.DB.prepare('SELECT * FROM modifier_options WHERE activo = 1 ORDER BY orden, id').all()).results;
 
   // Mapa group_id → options[]
   const optionsByGroup = new Map();
@@ -328,9 +328,9 @@ async function getMenu(envLocal) {
             options: optionsByGroup.get(g.id) || [],
           }));
 
-          // Combinar: groups del producto + groups de categoría (sin duplicar por nombre)
-          const nombresProd = new Set(prodGroups.map(g => g.nombre));
-          const extras = catGroups.filter(g => !nombresProd.has(g.nombre));
+          // Combinar: groups del producto + groups de categoría (sin repetir el mismo grupo)
+          const idsPropios = new Set(prodGroups.map(g => g.id));
+          const extras = catGroups.filter(g => !idsPropios.has(g.id));
 
           return {
             id: p.id, nombre: p.nombre, descripcion: p.descripcion,
@@ -399,7 +399,7 @@ async function revokeToken(request, envLocal) {
 async function listarProductos(envLocal) {
   const rows = (await envLocal.DB.prepare(`
     SELECT p.*, c.nombre AS categoria_nombre FROM productos p
-    JOIN categorias c ON c.id = p.categoria_id ORDER BY p.orden`).all()).results;
+    JOIN categorias c ON c.id = p.categoria_id ORDER BY p.orden, p.id`).all()).results;
   return json(rows);
 }
 
@@ -547,7 +547,7 @@ async function listarModifierGroups(envLocal) {
     FROM modifier_groups mg
     LEFT JOIN productos p ON p.id = mg.producto_id
     LEFT JOIN categorias c ON c.id = mg.categoria_id
-    ORDER BY mg.orden`).all()).results;
+    ORDER BY mg.orden, mg.id`).all()).results;
   // Adjuntar options a cada grupo
   const allOpts = (await envLocal.DB.prepare('SELECT * FROM modifier_options ORDER BY orden').all()).results;
   const optsByGroup = new Map();
@@ -594,7 +594,7 @@ async function eliminarModifierGroup(envLocal, id) {
 //  CRUD Modifier Options
 // ============================================================
 async function listarModifierOptions(envLocal, groupId) {
-  const rows = (await envLocal.DB.prepare('SELECT * FROM modifier_options WHERE group_id = ? ORDER BY orden').bind(groupId).all()).results;
+  const rows = (await envLocal.DB.prepare('SELECT * FROM modifier_options WHERE group_id = ? ORDER BY orden, id').bind(groupId).all()).results;
   return json(rows);
 }
 

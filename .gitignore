@@ -6,3 +6,4 @@ admin/.wrangler/
 tests/e2e/.chrome-profile*/
 serve.js
 *.log
+admin/.tmp-migraciones/

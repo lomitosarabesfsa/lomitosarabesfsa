@@ -82,8 +82,21 @@ function d1(args, timeout = 20000) {
 
 function prepararBase() {
   log('   · esquema + migraciones');
-  try { d1('--file=schema.sql'); } catch (e) { log('   (schema: ' + String(e.message).slice(0, 80) + ')'); }
-  try { d1('--file=migrate-categorias-promocional.sql'); } catch (e) { log('   (migración ya aplicada)'); }
+  // Misma cadena que producción: si una migración se rompe, se rompe acá.
+  try {
+    execSync('node scripts/migrar.mjs apply --local --db lomitos-db-e2e --config wrangler.e2e.toml', {
+      cwd: ADMIN, timeout: 60000, stdio: 'pipe',
+    });
+  } catch (e) {
+    // Base local previa al registro: se adopta el esquema actual.
+    try {
+      execSync('node scripts/migrar.mjs baseline --local --db lomitos-db-e2e --config wrangler.e2e.toml', {
+        cwd: ADMIN, timeout: 60000, stdio: 'pipe',
+      });
+    } catch (e2) {
+      log('   (migraciones: ' + String(e2.message).slice(0, 120) + ')');
+    }
+  }
 
   log('   · datos limpios + menú base');
   for (const t of ['modifier_options', 'modifier_groups', 'productos', 'categorias', 'promos', 'config', 'rate_limits']) {

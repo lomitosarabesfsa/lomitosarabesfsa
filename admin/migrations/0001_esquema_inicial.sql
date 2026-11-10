@@ -1,5 +1,16 @@
--- Schema D1 para Lomitos Árabes FSA
--- Ejecutar con: wrangler d1 execute lomitos-db --local --file=schema.sql
+-- ============================================================
+--  0001 · Esquema inicial (baseline de la cadena)
+--
+--  Estado del esquema ANTES de las campañas de categoría: las columnas
+--  promocional / temporal / desde / hasta las agrega 0002. Así una base
+--  nueva y la base histórica de producción convergen aplicando la misma
+--  cadena, sin un schema.sql paralelo que se desactualice.
+--
+--  No editar: ya está aplicada en producción (registrada como baseline).
+--  Para un cambio nuevo, crear migrations/000N_descripcion.sql.
+--
+--  Ejecutar con: node scripts/migrar.mjs apply
+-- ============================================================
 
 -- ============================================================
 -- TABLAS BASE
@@ -9,11 +20,7 @@ CREATE TABLE IF NOT EXISTS categorias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL UNIQUE,
   icono TEXT NOT NULL DEFAULT '',            -- vacío = sin icono (la landing no dibuja recuadro)
-  orden INTEGER NOT NULL DEFAULT 0,          -- 1..N, siempre normalizado (sin empates)
-  promocional INTEGER NOT NULL DEFAULT 0,    -- 1 = la landing la destaca sobre el resto
-  temporal INTEGER NOT NULL DEFAULT 0,       -- 1 = tiene vigencia (se oculta sola al vencer)
-  desde TEXT NOT NULL DEFAULT '',            -- ISO con offset (ej 2026-10-18T00:00:00-03:00). Vacío = sin inicio
-  hasta TEXT NOT NULL DEFAULT ''             -- ISO con offset. Obligatorio si temporal = 1
+  orden INTEGER NOT NULL DEFAULT 0           -- 1..N, siempre normalizado (sin empates)
 );
 
 CREATE TABLE IF NOT EXISTS productos (
@@ -43,18 +50,14 @@ CREATE TABLE IF NOT EXISTS config (
 
 
 -- ============================================================
--- MODIFIER GROUPS + OPTIONS (nuevo modelo profesional)
+-- MODIFIER GROUPS + OPTIONS
 -- ============================================================
---
--- modifier_groups: contenedor de opciones (ej: "Extras", "Salsas", "Proteína")
---   · producto_id  → grupo específico de ese producto
---   · categoria_id → grupo compartido por toda la categoría
---   · selection_type: 'single' = radio, 'multiple' = checkbox
---   · required: si es obligatorio elegir (single siempre es required)
---   · min/max: límites de selección (para multiple)
---
--- modifier_options: cada opción dentro de un grupo (ej: "Bacon + Cheddar", "$5000")
---   · price_delta: precio extra (sumado al base del producto)
+--   modifier_groups: contenedor de opciones (ej: "Extras", "Salsas")
+--     · producto_id  → grupo específico de ese producto
+--     · categoria_id → grupo compartido por toda la categoría
+--     · selection_type: 'single' = radio, 'multiple' = checkbox
+--   modifier_options: cada opción dentro de un grupo; price_delta se suma
+--   al precio base del producto.
 
 CREATE TABLE IF NOT EXISTS modifier_groups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +84,7 @@ CREATE TABLE IF NOT EXISTS modifier_options (
 );
 
 -- ============================================================
--- RATE LIMITING (IMP-7)
+-- RATE LIMITING
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS rate_limits (
@@ -105,13 +108,10 @@ CREATE TABLE IF NOT EXISTS revoked_tokens (
 -- ÍNDICES
 -- ============================================================
 
--- Modifier groups por producto o categoría
 CREATE INDEX IF NOT EXISTS idx_mg_producto ON modifier_groups(producto_id) WHERE activo = 1;
 CREATE INDEX IF NOT EXISTS idx_mg_categoria ON modifier_groups(categoria_id) WHERE activo = 1;
--- Options por grupo
 CREATE INDEX IF NOT EXISTS idx_mo_group ON modifier_options(group_id) WHERE activo = 1;
 
--- Queries frecuentes del menú público
 CREATE INDEX IF NOT EXISTS idx_productos_activo_orden ON productos(activo, orden);
 CREATE INDEX IF NOT EXISTS idx_productos_categoria_orden ON productos(categoria_id, orden);
 CREATE INDEX IF NOT EXISTS idx_promos_activa ON promos(activa);
