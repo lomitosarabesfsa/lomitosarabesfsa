@@ -1327,6 +1327,21 @@
             background: rgba(255, 255, 255, 0.02);
         }
 
+        /* En claro la superficie es blanca: el borde blanco del checkbox/radio
+           desaparecía y la opción parecía no ser seleccionable hasta tocarla. */
+        [data-theme="light"] .bs-option {
+            border-bottom-color: rgba(42, 18, 6, 0.1);
+        }
+
+        [data-theme="light"] .bs-option:hover {
+            background: rgba(42, 18, 6, 0.03);
+        }
+
+        [data-theme="light"] .bs-radio,
+        [data-theme="light"] .bs-checkbox {
+            border-color: rgba(42, 18, 6, 0.5);
+        }
+
         .bs-option-left {
             display: flex;
             align-items: center;

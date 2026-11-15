@@ -1,9 +1,9 @@
-const CACHE_NAME = 'lomitos-fsa-v33';
+const CACHE_NAME = 'lomitos-fsa-v34';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/styles.css?v=33',
-  '/app.js?v=33',
+  '/styles.css?v=34',
+  '/app.js?v=34',
 
   // Versiones livianas: el precache baja ~240 KB en lugar de ~7 MB
   '/assets/background.webp',
