@@ -10,15 +10,15 @@ El archivo `admin/seed.sql` inserta **13 productos** en **4 categorías**.
 
 | ID | Nombre | Descripción | Precio |
 |----|--------|-------------|--------|
-| 1 | Árabe Simple Pollo | Jamon,Queso,200g De Pollo,180g De Verduras + Salsa De Ajo = Kg 850 | $13.000 |
-| 2 | Árabe Simple Carne | Jamon,Queso,200g De Carne,180g De Verduras + Salsa De Ajo = Kg 850 | $15.000 |
-| 3 | Arabe Especial Carne | 200g De Carne,Cheddar,200g De Verduras + Salsa De Ajo = Kg 900 | $17.000 |
-| 4 | Arabe Especial Pollo | 200g De Pollo,Cheddar,200g De Verduras + Salsa De Ajo = Kg 900 | $17.000 |
-| 5 | Arabe Mixto | 200g De Carne,200g De Pollo,Jamon,Queso,250g De Verduras + Salsa De Ajo = Kg 1400 | $20.000 |
-| 6 | LomiBurguer Simple | 220g De Carne Burguer,Jamon,Queso,180g De Verduras + Salsa De Ajo = Kg 800 | $15.000 |
-| 7 | LomiBurguer Completo | 180g De Verduras,Jamon,Queso,2Huevos,220g De Carne Burger + Salsa De Ajo = Kg 900 | $18.000 |
-| 8 | Arabe De Remolacha Carne | 200g De Carne,Jamon,Queso,180g De Verduras + Salsa De Ajo = Kg 850 | $15.000 |
-| 9 | Arabe De Remolacha Pollo | 200g De Pollo,Jamon,Queso,180g De Verduras + Salsa De Ajo = Kg 850 | $13.000 |
+| 1 | Árabe Simple Pollo | Jamón, queso, pollo, verduras + salsa de ajo | $13.000 |
+| 2 | Árabe Simple Carne | Jamón, queso, carne, verduras + salsa de ajo | $15.000 |
+| 3 | Arabe Especial Carne | Carne, cheddar, verduras + salsa de ajo | $17.000 |
+| 4 | Arabe Especial Pollo | Pollo, cheddar, verduras + salsa de ajo | $17.000 |
+| 5 | Arabe Mixto | Carne, pollo, jamón, queso, verduras + salsa de ajo | $20.000 |
+| 6 | LomiBurguer Simple | Carne burguer, jamón, queso, verduras + salsa de ajo | $15.000 |
+| 7 | LomiBurguer Completo | Verduras, jamón, queso, 2 huevos, carne burguer + salsa de ajo | $18.000 |
+| 8 | Arabe De Remolacha Carne | Carne, jamón, queso, verduras + salsa de ajo | $15.000 |
+| 9 | Arabe De Remolacha Pollo | Pollo, jamón, queso, verduras + salsa de ajo | $13.000 |
 
 ## 🔥 Oportunidad Limitada (categoría 2)
 

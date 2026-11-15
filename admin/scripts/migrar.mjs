@@ -179,6 +179,17 @@ function ejecutarSql(sql, op) {
   return r;
 }
 
+// Wrangler no devuelve las filas de un SELECT cuando el SQL va por --file:
+// contesta un resumen de ejecución. Para leer datos hay que usar --command.
+function ejecutarConsulta(sql, op) {
+  const args = [
+    'd1', 'execute', op.db, op.remote ? '--remote' : '--local',
+    '--json', '--command', `"${sql.replace(/"/g, '\\"')}"`,
+  ];
+  if (op.config) args.push('--config', op.config);
+  return correr(args);
+}
+
 function filas(resultado) {
   if (!Array.isArray(resultado.json) || !resultado.json.length) return [];
   const ultimo = resultado.json[resultado.json.length - 1];
@@ -186,7 +197,7 @@ function filas(resultado) {
 }
 
 function leerLedger(op) {
-  const r = ejecutarSql(`SELECT version, nombre, checksum, aplicada_en, baseline FROM ${LEDGER} ORDER BY version;`, op);
+  const r = ejecutarConsulta(`SELECT version, nombre, checksum, aplicada_en, baseline FROM ${LEDGER} ORDER BY version;`, op);
   if (r.ok) return filas(r);
   if (/no such table/i.test(r.error || '')) return null;
   throw new Error(`No pude leer ${LEDGER}:\n${r.error}`);
