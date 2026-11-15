@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es-AR" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -10,14 +10,17 @@
     <meta property="og:title" content="Lomitos Árabes en Formosa | Delivery">
     <meta property="og:description" content="¿Antojo de un buen lomito o shawarma en Formosa? Pide ahora por WhatsApp.">
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Lomitos Árabes FSA">
     <meta property="og:url" content="https://lomitosarabesfsa.pages.dev/">
-    <meta property="og:image" content="https://lomitosarabesfsa.pages.dev/assets/og-image.jpg">
+    <meta property="og:image" content="https://lomitosarabesfsa.pages.dev/assets/og-image-brand.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta property="og:locale" content="es_AR">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Lomitos Árabes en Formosa | Delivery">
     <meta name="twitter:description" content="¿Antojo de un buen lomito o shawarma en Formosa? Pide ahora por WhatsApp.">
-    <meta name="twitter:image" content="https://lomitosarabesfsa.pages.dev/assets/og-image.jpg">
-    <meta name="theme-color" content="#F57C00">
+    <meta name="twitter:image" content="https://lomitosarabesfsa.pages.dev/assets/og-image-brand.jpg">
+    <meta name="theme-color" content="#55BBFF">
     <meta name="google-site-verification" content="2R-Vm-4SmtY5lG5pTtzDYtoxjVfil7qvMNvJFb23N14" />
 
     <!-- Tema antes del primer paint: si el sistema pide claro, no hay flash oscuro -->
@@ -59,19 +62,24 @@
 
     <link rel="canonical" href="https://lomitosarabesfsa.pages.dev/">
     <link rel="manifest" href="./manifest.json">
-    <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+    <link rel="icon" href="./assets/icon-192.png" type="image/png" sizes="192x192">
+    <link rel="icon" href="./assets/icon-512.png" type="image/png" sizes="512x512">
     <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="image" href="./assets/background.webp" type="image/webp">
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;600;800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@300;400;600;800&display=swap"
         rel="stylesheet">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Restaurant",
+      "@id": "https://lomitosarabesfsa.pages.dev/#restaurant",
       "name": "Lomitos Árabes FSA",
-      "image": "https://lomitosarabesfsa.pages.dev/assets/og-image.jpg",
+      "alternateName": ["Lomito Árabe FSA", "LOMITO.ARABE.FSA"],
+      "description": "Lomitos árabes con masa casera, shawarma y delivery en Formosa Capital.",
+      "logo": "https://lomitosarabesfsa.pages.dev/assets/icon-512.png",
+      "image": ["https://lomitosarabesfsa.pages.dev/assets/og-image-brand.jpg"],
       "url": "https://lomitosarabesfsa.pages.dev/",
       "telephone": "+5493704218188",
       "address": {
@@ -85,11 +93,25 @@
         "latitude": -26.183732,
         "longitude": -58.205475
       },
-      "servesCuisine": "Middle Eastern, Comida Árabe",
-      "priceRange": "$$"
+      "areaServed": { "@type": "City", "name": "Formosa" },
+      "servesCuisine": ["Middle Eastern", "Comida Árabe", "Shawarma"],
+      "priceRange": "$$",
+      "currenciesAccepted": "ARS",
+      "paymentAccepted": "Efectivo, Transferencia, Mercado Pago",
+      "hasMenu": "https://lomitosarabesfsa.pages.dev/#menu",
+      "sameAs": ["https://www.instagram.com/lomito.arabe.fsa/"],
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Sunday", "Monday", "Wednesday", "Thursday", "Friday", "Saturday"],
+          "opens": "20:00",
+          "closes": "00:00"
+        }
+      ]
     }
     </script>
-        <link rel="stylesheet" href="styles.css">
+        <!-- Cache-busting: al cambiar CSS o JS, subí ?v= acá y CACHE_NAME/URLs en sw.js -->
+        <link rel="stylesheet" href="styles.css?v=33">
 </head>
 
 <body>
@@ -109,9 +131,9 @@
 
     <nav id="navbar">
         <div class="nav-left">
-            <a href="#" class="nav-logo">
-                <img src="./assets/logo.webp" alt="" onerror="this.style.display='none'">
-                <span class="nav-logo-text"><span>LOMITO</span> ÁRABE FSA</span>
+            <a href="#inicio" class="nav-logo">
+                <img src="./assets/isotipo.png" width="45" height="45" alt="" onerror="this.style.display='none'">
+                <span class="nav-logo-text"><span>LOMITOS</span> <span class="nav-logo-word">ÁRABES</span> FSA</span>
             </a>
             <div class="status-badge cerrado" id="status-badge">
                 <span class="status-dot"></span>
@@ -142,13 +164,17 @@
 
     <header class="hero" id="inicio">
         <div class="hero-bg" id="parallax-bg"></div>
-        <div class="weight-badge reveal">¡LLEGAN A PESAR 1000GR O MAS!</div>
-        <h1 class="reveal stagger-1">LOMITOS ÁRABES EN FORMOSA<br><span>EL AUTÉNTICO SABOR</span></h1>
-        <p class="reveal stagger-2">Los mejores lomitos árabes de Formosa. Masa casera, ingredientes frescos y mucho
-            sabor.</p>
+        <div class="hero-veil" aria-hidden="true"></div>
+        <div class="weight-badge reveal">¡PESAN 1 KG O MÁS!</div>
+        <h1 class="reveal stagger-1">LOMITOS ÁRABES EN FORMOSA<br><span>RELLENO GENEROSO & SABOR AUTÉNTICO</span></h1>
+        <p class="reveal stagger-2">Masa casera, carnes y verduras frescas. Delivery en Formosa desde las 20:00.</p>
         <a href="#menu" class="cta-btn reveal stagger-2" id="hero-cta">
-            Hacer mi pedido
+            Ver el menú
         </a>
+        <div class="hero-status cerrado" id="hero-status" role="status" aria-live="polite">
+            <span class="status-dot"></span>
+            <span id="hero-status-text">Consultando horario…</span>
+        </div>
     </header>
 
     <!-- Promo Banner -->
@@ -163,7 +189,7 @@
 
     <!-- Menú -->
     <section id="menu">
-        <h2 class="section-title reveal">Nuestro <span>Menú</span></h2>
+
         <p class="section-subtitle reveal">Todo el menú a la vista: tocá el botón <strong>+</strong> para armar tu pedido 👇</p>
 
 
@@ -251,7 +277,7 @@
     <footer>
         <div class="footer-grid">
             <div class="footer-brand">
-                <div class="footer-logo"><span>Lomito</span> Árabe FSA</div>
+                <div class="footer-logo"><span>Lomitos</span> Árabes FSA</div>
                 <p>Los mejores lomitos árabes de Formosa. Masa casera, ingredientes frescos y el auténtico sabor de
                     medio oriente con un toque local.</p>
                 <div class="footer-social">
@@ -527,19 +553,17 @@
         </div>
     </div>
 
-    <!-- Botón flotante del carrito (el pedido pasa por el menú web) -->
-    <div class="cart-floating-btn" data-action="toggle-cart" role="button" tabindex="0" aria-label="Abrir carrito">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" width="28" height="28">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <path d="M16 10a4 4 0 0 1-8 0"></path>
-        </svg>
-        <span class="cart-count" id="cart-count-badge">0</span>
+    <!-- Barra flotante del carrito (el pedido pasa por el menú web) -->
+    <div class="cart-floating-btn cart-bar" data-action="toggle-cart" role="button" tabindex="0" aria-label="Abrir carrito" hidden>
+        <span class="cart-bar-left">
+            <span class="cart-count" id="cart-count-badge">0</span>
+            <span class="cart-bar-label">Ver pedido</span>
+        </span>
+        <span class="cart-bar-total" id="cart-bar-total">$0</span>
     </div>
 
 
-    <script src="app.js" defer></script>
+    <script src="app.js?v=33" defer></script>
 </body>
 
 </html>

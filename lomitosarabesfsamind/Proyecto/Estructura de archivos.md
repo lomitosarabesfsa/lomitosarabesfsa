@@ -14,7 +14,11 @@ lomitosarabesfsa/
 │
 ├── assets/                       # Imágenes estáticas
 │   ├── background.jpeg           # Imagen de fondo
-│   ├── icon.svg                  # Icono SVG
+│   ├── isotipo.png               # Mascota para el nav
+│   ├── icon-192.png              # Icono PWA / favicon
+│   ├── icon-512.png              # Icono PWA / logo del schema
+│   ├── apple-touch-icon.png      # Icono iOS
+│   ├── og-image-brand.jpg        # Tarjeta social 1200x630
 │   ├── ilustrativo.jpeg          # Imagen ilustrativa
 │   └── logoheader.jpeg           # Logo para el header
 │

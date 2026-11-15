@@ -201,15 +201,18 @@
             const badge = document.getElementById('status-badge');
             const text = document.getElementById('status-text');
             const heroCta = document.getElementById('hero-cta');
+            const heroStatus = document.getElementById('hero-status');
+            const heroStatusText = document.getElementById('hero-status-text');
 
+            // El CTA principal nunca se apaga:
+            // fuera de horario igual se puede ver la carta para decidir después.
             if (estado.abierto) {
                 badge.className = 'status-badge abierto';
                 text.textContent = `Abierto · Cierra ${hhmm(estado.cierra)}hs`;
-                heroCta.classList.remove('cerrado');
                 heroCta.textContent = 'Hacer mi pedido';
                 heroCta.href = '#menu';
-                heroCta.removeAttribute('tabindex');
-                heroCta.removeAttribute('aria-disabled');
+                if (heroStatus) heroStatus.className = 'hero-status abierto';
+                if (heroStatusText) heroStatusText.textContent = `Abierto ahora · cierra ${hhmm(estado.cierra)}`;
                 return;
             }
 
@@ -219,10 +222,12 @@
                 : `Abre ${CONFIG.DIAS[p.dia].substring(0, 3)} ${hhmm(p.abre)}hs`;
             badge.className = 'status-badge cerrado';
             text.textContent = `Cerrado · ${cuando}`;
-            heroCta.classList.add('cerrado');
-            heroCta.textContent = `Cerrado · ${cuando}`;
-            heroCta.setAttribute('tabindex', '-1');
-            heroCta.setAttribute('aria-disabled', 'true');
+            heroCta.textContent = 'Ver el menú';
+            heroCta.href = '#menu';
+            if (heroStatus) heroStatus.className = 'hero-status cerrado';
+            if (heroStatusText) heroStatusText.textContent = !p ? 'Cerrado por hoy'
+                : p.hoy ? `Cerrado ahora · abre hoy ${hhmm(p.abre)}`
+                : `Cerrado ahora · abre ${CONFIG.DIAS[p.dia].substring(0, 3)} ${hhmm(p.abre)}`;
         }
         function renderFooterHours() {
             const container = document.getElementById('footer-hours');
@@ -297,6 +302,45 @@
         // ============================================================
         //  CARGAR Y PROCESAR DATOS DESDE LA API
         // ============================================================
+        // ─── NORMALIZACIÓN DE TEXTO ───
+        // La API trae descripciones con mayúsculas sueltas, comas sin espacio y
+        // faltas de tilde ("Jamon,Queso,200g De Pollo"). Se corrigen al pintar,
+        // una sola vez, para que menú, carrito y checkout digan lo mismo.
+        function corregirAcentos(t) {
+            return t.replace(/\b(jamon|miercoles|sabado|arabe|bueguer)\b/gi, (m, w) => {
+                const bien = { jamon: 'jamón', miercoles: 'miércoles', sabado: 'sábado', arabe: 'árabe', bueguer: 'burguer' }[w.toLowerCase()];
+                return /^[A-ZÁÉÍÓÚ]/.test(m) ? bien.charAt(0).toUpperCase() + bien.slice(1) : bien;
+            });
+        }
+
+        function normalizarNombre(txt) {
+            let s = String(txt || 'Producto').replace(/\s+/g, ' ').trim();
+            s = corregirAcentos(s);
+            s = s.replace(/\b(De|Del|La|Las|El|Los|Y|O|Con)\b/g, (m, p1, offset) => offset === 0 ? m : m.toLowerCase());
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        function normalizarDescripcion(txt) {
+            if (!txt) return '';
+            let s = String(txt).replace(/\s+/g, ' ').trim().toLowerCase();
+            s = s.replace(/\s*,\s*/g, ', ');
+
+            // Fuera pesos por ingrediente y totales ("200 g de pollo", "= kg 850"):
+            // la ficha queda solo con los ingredientes, más corta y transparente.
+            s = s.replace(/=\s*(?:\d+(?:[.,]\d+)?\s*(?:kg|kilos?|gramos|gr|g)|(?:kg|kilos?)\s*\d+(?:[.,]\d+)?)/g, '');
+            s = s.replace(/\d+(?:[.,]\d+)?\s*(?:kilos?|kg|gramos|gr|g)\b\s*(?:de\s+)?/g, '');
+
+            s = s.replace(/(\d)([a-záéíóúñ])/g, '$1 $2');
+            s = s.replace(/\s+([.,])/g, '$1');
+            s = s.replace(/\s*,\s*,+/g, ', ');
+            s = s.replace(/,\s*\+/g, ' +');
+            s = s.replace(/\+\s*,/g, '+');
+            s = s.replace(/^[\s,;+]+|[\s,;+]+$/g, '');
+            s = s.replace(/\s{2,}/g, ' ');
+            s = corregirAcentos(s);
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
         function procesarMenuJSON(data) {
             // Fuente: API del Worker (admin panel).
             productosDB = [];
@@ -319,8 +363,8 @@
                         id: 'api-' + p.id,
                         categoria: cat.nombre,
                         categoriaId: cat.id,
-                        nombre: p.nombre || 'Producto',
-                        descripcion: p.descripcion || '',
+                        nombre: normalizarNombre(p.nombre),
+                        descripcion: normalizarDescripcion(p.descripcion),
                         precio: Number(p.precio) || 0,
                         stock: (p.stock === undefined || p.stock === null) ? -1 : Number(p.stock),
                         imagen: p.imagen || '',
@@ -1052,6 +1096,16 @@
 
             badge.innerText = cantidadItems;
             totalEl.innerText = '$' + total.toLocaleString('es-AR');
+
+            // Barra flotante: cantidad + total, y se oculta si no hay pedido
+            const bar = document.querySelector('.cart-floating-btn.cart-bar');
+            const barTotal = document.getElementById('cart-bar-total');
+            if (barTotal) barTotal.textContent = '$' + total.toLocaleString('es-AR');
+            if (bar) {
+                bar.hidden = cantidadItems === 0;
+                bar.setAttribute('aria-label', `Abrir carrito: ${cantidadItems} ${cantidadItems === 1 ? 'producto' : 'productos'}, total $${total.toLocaleString('es-AR')}`);
+            }
+            document.body.classList.toggle('con-carrito', cantidadItems > 0);
         }
 
         // ============================================================
@@ -1789,6 +1843,19 @@
             }
         }
 
+        // El CTA del hero lleva a la barra de categorías, no al título de la sección:
+        // así el comensal ve las categorías pegadas al nav y los productos debajo.
+        // No se usa el ancla directa porque html tiene scroll-padding-top: 140px.
+        function irAlMenu() {
+            const chips = document.getElementById('carta-chips');
+            const navbar = document.getElementById('navbar');
+            if (!chips) { location.hash = '#menu'; return; }
+            const navH = navbar ? navbar.getBoundingClientRect().height : 69;
+            const top = Math.max(0, Math.round(chips.getBoundingClientRect().top + window.scrollY - navH));
+            window.scrollTo({ top, behavior: 'smooth' });
+            if (location.hash !== '#menu') history.replaceState(null, '', '#menu');
+        }
+
         // Flechas del carril de chips: visibles sólo si hay algo que desplazar.
         // Los elementos se consultan en cada llamada porque el carril se re-renderiza
         // con el menú (antes se enganchaban una vez sobre nodos que luego se destruían).
@@ -1935,6 +2002,16 @@
             }
         });
 
+
+        // Todos los enlaces internos al menú (nav, hamburguesa y footer)
+        // aterrizan en la barra de categorías, no en el título de la sección.
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a[href="#menu"]');
+            if (!link) return;
+            e.preventDefault();
+            closeMobileMenu();
+            irAlMenu();
+        });
 
         // Listener para keydown en mobile-menu links (Enter/Space)
         document.addEventListener('keydown', (e) => {

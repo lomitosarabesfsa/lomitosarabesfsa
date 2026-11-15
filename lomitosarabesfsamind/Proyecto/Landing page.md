@@ -49,20 +49,25 @@ Una categoría puede venir marcada como `promocional` y/o `temporal` desde el pa
 
 ## Personalización de colores
 
-Los colores se definen como CSS custom properties al inicio del `<style>`:
+La paleta se deriva del logo (`assets/logo.webp`): celeste de marca, pan, tinta marrón, cheddar y tomate. Se define como CSS custom properties al inicio de `styles.css`:
 
 ```css
 :root {
-    --primary: #F57C00;     /* Naranja (marca) */
-    --secondary: #D84315;   /* Rojo oscuro */
-    --tertiary: #FFB300;    /* Dorado */
-    --bg: #121212;          /* Fondo oscuro */
-    --surface: #1E1E1E;     /* Superficie */
-    --text: #FFFFFF;        /* Texto claro */
+    --sky: #55BBFF;         /* Celeste del logo */
+    --cream: #FFF4E2;       /* Pan: texto/crema de marca */
+    --ink: #2A1206;         /* Tinta: texto y bordes */
+    --primary: #F2A51C;     /* Cheddar: relleno de CTA (texto --on-primary) */
+    --primary-text: #A8E0FF;/* Acento de títulos en oscuro */
+    --action-primary: #C0332A; /* Tomate: botón de agregar */
+    --bg: #0A0A0A;          /* Fondo oscuro negro */
+    --surface: #141414;     /* Superficie oscura */
+    --text: #FFF7EC;        /* Texto claro */
 }
 ```
 
 > Para cambiar el tema, solo modificá estas variables. Todos los componentes las usan.
+> El tema claro vive en `[data-theme="light"]`: `--bg: #E9DDC7` (papel), `--surface: #FFFFFF`, `--text: #2A1206`, `--text-muted: #5F4836`, `--primary-text: #9C3416` y `--tertiary: #7A4A00`. El fondo claro lleva una textura de grano SVG.
+> Regla de contraste: sobre rellenos claros (cheddar, crema) el texto va en `--on-primary`/`--ink`, nunca blanco.
 
 ## SEO
 

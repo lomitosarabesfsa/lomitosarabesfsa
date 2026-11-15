@@ -2,51 +2,54 @@
            DESIGN TOKENS
            ============================================ */
         :root {
-            --primary: #F57C00;
-            /* Naranja de marca cuando se usa como TEXTO: en claro se oscurece para pasar AA */
-            --primary-text: #F57C00;
-            --secondary: #D84315;
-            --tertiary: #FFB300;
-            /* Coral de acciones: oscurecido porque el blanco encima de #FF6F61 daba 2.73:1 */
-            --action-primary: #E24B3D;
-            /* Verde de acción para botones con texto blanco (5.5:1). --whatsapp queda para la marca del canal */
-            --cta-action: #0F766E;
-            --overlay-bg: rgba(18, 18, 18, 0.97);
-            --cart-badge-text: #00695C;
-            --bg: #121212;
-            --surface: #1E1E1E;
-            --surface-hover: #2a2a2a;
-            --text: #FFFFFF;
-            --text-muted: #B0BEC5;
+            /* Brand kit derivado del logo (assets/logo.webp):
+               celeste #55BBFF, pan #F0C078, tinta #2A1206, cheddar #DE8A06. */
+            --sky: #55BBFF;
+            --cream: #FFF4E2;
+            --ink: #2A1206;
+            /* Texto sobre rellenos claros (cheddar): tinta, nunca blanco */
+            --on-primary: #2A1206;
+            /* Cheddar: relleno de CTA. Con tinta encima da 6.4:1 */
+            --primary: #F2A51C;
+            /* Acento de títulos: celeste de marca sobre fondo oscuro */
+            --primary-text: #A8E0FF;
+            --secondary: #C0332A;
+            --tertiary: #FFD79A;
+            /* Tomate: botón de agregar, con glifo blanco (4.8:1) */
+            --action-primary: #C0332A;
+            /* Verde WhatsApp oscurecido para que el blanco pase AA */
+            --cta-action: #128C4A;
+            --overlay-bg: rgba(0, 0, 0, 0.97);
+            --cart-badge-text: #0E3050;
+            /* Negro carbón: el modo oscuro vuelve al negro original,
+               con superficies apenas elevadas para separar las tarjetas. */
+            --bg: #0A0A0A;
+            --surface: #141414;
+            --surface-hover: #202020;
+            --text: #FFF7EC;
+            --text-muted: #CFC7BD;
             --whatsapp: #25D366;
-            /* Rojo más claro: sobre la píldora roja del badge daba 4.28:1 (AA pide 4.5) */
-            --danger: #F87171;
-            --warning: #f59e0b;
-            --success: #22c55e;
+            --danger: #FFB4A8;
+            --warning: #FFD79A;
+            --success: #B6F0A8;
             --radius: 20px;
             --radius-sm: 12px;
-            --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            --shadow: 0 6px 0 rgba(0, 0, 0, 0.6), 0 14px 30px rgba(0, 0, 0, 0.45);
         }
 
-        /* Light Mode */
+        /* Light Mode: papel beige cálido con textura de grano */
         [data-theme="light"] {
-            --bg: #F5F5F5;
+            --bg: #E9DDC7;
             --surface: #FFFFFF;
-            --surface-hover: #f0f0f0;
-            --text: #1a1a1a;
-            /* #6B7280 daba 4.43:1 sobre #F5F5F5 (debajo de AA): ahora 6.9:1 */
-            --text-muted: #4B5563;
-            /* Naranja de marca como texto en claro: 5.1:1 sobre #F5F5F5 y 4.6:1 sobre las
-               píldoras naranjas (antes 2.48:1) */
-            --primary-text: #B4440A;
-            /* El dorado de precios aclarado sobre fondo claro daba 1.65:1: acá va oscurecido */
-            --tertiary: #8A5300;
-            /* Rojos y verdes de texto/badge sobre claro: el tono original quedaba
-               entre 1.8:1 y 3.45:1 sobre las píldoras del badge */
-            --danger: #A11616;
-            --success: #166534;
-            --overlay-bg: rgba(245, 245, 245, 0.97);
-            --cart-badge-text: #00796B;
+            --surface-hover: #F3E7D2;
+            --text: #2A1206;
+            --text-muted: #5F4836;
+            --primary-text: #9C3416;
+            --tertiary: #7A4A00;
+            --danger: #A61B1B;
+            --success: #3F6B12;
+            --overlay-bg: rgba(233, 221, 199, 0.97);
+            --cart-badge-text: #0E3050;
         }
 
         [data-theme="light"] .hero-bg {
@@ -55,8 +58,8 @@
         }
 
         [data-theme="light"] nav {
-            background: rgba(245, 245, 245, 0.9);
-            border-bottom-color: rgba(0, 0, 0, 0.08);
+            background: rgba(233, 221, 199, 0.9);
+            border-bottom-color: rgba(42, 18, 6, 0.1);
         }
 
         [data-theme="light"] .nav-links a {
@@ -167,7 +170,7 @@
         h2,
         h3,
         .nav-logo {
-            font-family: 'Anton', sans-serif;
+            font-family: 'Baloo 2', 'Inter', sans-serif;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
@@ -435,7 +438,7 @@
         .mobile-menu a {
             color: var(--text);
             text-decoration: none;
-            font-family: 'Anton', sans-serif;
+            font-family: 'Baloo 2', 'Inter', sans-serif;
             font-size: 2rem;
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -471,10 +474,28 @@
             background-size: cover;
             background-position: center;
             opacity: 0.6;
-            z-index: -1;
+            z-index: -2;
             transform: scale(1.1);
             filter: brightness(0.7) contrast(1.1);
             will-change: transform; /* GPU-accelerated parallax sin repaint en scroll */
+        }
+
+        /* Velo de lectura: el patrón del logo no debe competir con el titular.
+           Es un elemento real (no ::before) para que se pinte desde la primera
+           carga, antes de cualquier recálculo de tema. */
+        .hero-veil {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.65) 55%, rgba(0, 0, 0, 0.88));
+            /* Positivo: la imagen tiene will-change y se compone por encima de
+               las capas negativas; el velo debe quedar entre imagen y texto. */
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .hero > :not(.hero-bg):not(.hero-veil) {
+            position: relative;
+            z-index: 2;
         }
 
         .hero::after {
@@ -485,7 +506,8 @@
             right: 0;
             height: 160px;
             background: linear-gradient(to top, var(--bg) 0%, transparent 100%);
-            z-index: -1;
+            z-index: 1;
+            pointer-events: none;
         }
 
         .hero h1 {
@@ -509,11 +531,36 @@
             text-shadow: 1px 2px 10px rgba(0, 0, 0, 0.9);
         }
 
+        .hero-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.62);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+        }
+
+        .hero-status .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            flex-shrink: 0;
+        }
+
+        .hero-status.abierto .status-dot { background: var(--success); }
+
         .weight-badge {
             display: inline-block;
             /* Fondo sólido: el texto va sobre la imagen del hero y con un velo
                translúcido el contraste quedaba a merced de la foto (4.17:1) */
-            background: #121212;
+            background: #0A0A0A;
             border: 1px solid var(--primary);
             color: var(--primary-text);
             padding: 8px 20px;
@@ -533,7 +580,7 @@
             color: #FFF;
             padding: 16px 45px;
             font-size: 20px;
-            font-family: 'Anton', sans-serif;
+            font-family: 'Baloo 2', 'Inter', sans-serif;
             text-decoration: none;
             letter-spacing: 1px;
             border-radius: 50px;
@@ -892,7 +939,7 @@
         }
 
         .carta-section-title {
-            font-family: 'Anton', sans-serif;
+            font-family: 'Baloo 2', 'Inter', sans-serif;
             letter-spacing: 1px;
             text-transform: uppercase;
             font-size: 1.7rem;
@@ -1189,7 +1236,7 @@
         }
 
         .bs-product-name {
-            font-family: 'Anton', sans-serif;
+            font-family: 'Baloo 2', 'Inter', sans-serif;
             font-size: 1.4rem;
             color: var(--text);
             text-transform: uppercase;
@@ -1582,21 +1629,39 @@
         }
 
         .stock-badge.agotado {
-            background: rgba(239, 68, 68, 0.15);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: rgba(166, 27, 27, 0.2);
+            color: #FFB4A8;
+            border: 1px solid rgba(255, 180, 168, 0.35);
         }
 
         .stock-badge.pocas {
-            background: rgba(245, 158, 11, 0.15);
-            color: #f59e0b;
-            border: 1px solid rgba(245, 158, 11, 0.3);
+            background: rgba(242, 165, 28, 0.2);
+            color: #FFE0A3;
+            border: 1px solid rgba(255, 224, 163, 0.35);
         }
 
         .stock-badge.disponible {
-            background: rgba(34, 197, 94, 0.1);
-            color: #22c55e;
-            border: 1px solid rgba(34, 197, 94, 0.2);
+            background: rgba(63, 107, 18, 0.25);
+            color: #B6F0A8;
+            border: 1px solid rgba(182, 240, 168, 0.35);
+        }
+
+        [data-theme="light"] .stock-badge.agotado {
+            background: rgba(166, 27, 27, 0.08);
+            color: #A61B1B;
+            border-color: rgba(166, 27, 27, 0.25);
+        }
+
+        [data-theme="light"] .stock-badge.pocas {
+            background: rgba(242, 165, 28, 0.14);
+            color: #8A5300;
+            border-color: rgba(242, 165, 28, 0.35);
+        }
+
+        [data-theme="light"] .stock-badge.disponible {
+            background: rgba(63, 107, 18, 0.1);
+            color: #2F5D0E;
+            border-color: rgba(63, 107, 18, 0.28);
         }
 
         /* Cart Sidebar */
@@ -2106,7 +2171,7 @@
         }
 
         .footer-brand .footer-logo {
-            font-family: 'Anton', sans-serif;
+            font-family: 'Baloo 2', 'Inter', sans-serif;
             font-size: 1.8rem;
             color: var(--primary-text);
             text-transform: uppercase;
@@ -2125,7 +2190,7 @@
 
         .footer-col h4 {
             color: var(--primary-text);
-            font-family: 'Anton', sans-serif;
+            font-family: 'Baloo 2', 'Inter', sans-serif;
             font-size: 1.1rem;
             text-transform: uppercase;
             margin-bottom: 20px;
@@ -2575,8 +2640,47 @@
            RESPONSIVE
            ============================================ */
         @media (max-width: 768px) {
+            /* V4 móvil: el hero pasa de portada a banda de marca para que la
+               carta arranque en el primer pantallazo. Medido a 390x844: el
+               primer precio baja de 1271px a 681px. */
+            .hero {
+                padding: 84px 16px 32px;
+            }
+
+            .hero::after {
+                height: 60px;
+            }
+
+            #hero-cta {
+                padding: 11px 30px;
+                font-size: 16px;
+            }
+
+            #menu {
+                padding-top: 20px;
+            }
+
+            #menu .section-title {
+                font-size: 1.75rem;
+                margin-bottom: 4px;
+            }
+
+            /* La instrucción "tocá + para armar tu pedido" se oculta en móvil:
+               los chips sticky y el botón + de cada fila ya la explican y,
+               sola, costaba 84px de pliegue. */
+            #menu .section-subtitle {
+                display: none;
+            }
+
             .carta-chips {
                 top: var(--nav-height, 80px);
+                margin-bottom: 12px;
+                padding: 6px 8px;
+            }
+
+            .carta-section-header {
+                margin-bottom: 4px;
+                padding-bottom: 8px;
             }
 
             nav {
@@ -2605,18 +2709,20 @@
             }
 
             .hero h1 {
-                font-size: 3.5rem;
+                font-size: 2.4rem;
+                line-height: 1.03;
+                margin-bottom: 10px;
             }
 
             .weight-badge {
-                font-size: 0.8rem;
-                padding: 5px 15px;
-                margin-bottom: 15px;
+                font-size: 0.75rem;
+                padding: 4px 12px;
+                margin-bottom: 8px;
             }
 
             .hero p {
-                font-size: 1rem;
-                margin-bottom: 30px;
+                font-size: 0.9rem;
+                margin-bottom: 12px;
             }
 
             .section-title {
@@ -2724,4 +2830,263 @@
             .form-row {
                 grid-template-columns: 1fr;
             }
+        }
+
+
+        /* ============================================
+           SISTEMA DE MARCA (derivado del logo)
+           Paleta: celeste #55BBFF, pan #F0C078, tinta #2A1206,
+           cheddar #DE8A06, lechuga #589020, tomate #C0332A.
+           Tipografía redondeada para acompañar el lettering.
+           ============================================ */
+
+        h1, h2, h3, .nav-logo, .mobile-menu a, .cta-btn, .carta-section-title {
+            font-family: 'Baloo 2', 'Inter', sans-serif;
+            letter-spacing: 0.5px;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.8rem, 8vw, 5.5rem);
+            line-height: 1.02;
+        }
+
+        .section-title { font-size: 3rem; }
+        .carta-section-title { font-size: 1.55rem; }
+        .footer-brand .footer-logo { font-size: 1.55rem; }
+        .nav-logo { font-size: 21px; }
+
+        /* --- Botones tipo sticker: ámbar con tinta oscura --- */
+        .cta-btn {
+            background: var(--primary);
+            color: var(--on-primary);
+            border: 2px solid var(--ink);
+            border-radius: 16px;
+            box-shadow: 0 6px 0 rgba(3, 14, 26, 0.45);
+            font-weight: 800;
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 rgba(3, 14, 26, 0.45);
+        }
+
+        .cta-btn.cerrado {
+            background: #5E7078;
+            color: #F2F7F8;
+            border-color: transparent;
+            box-shadow: none;
+        }
+
+        .bs-add-btn {
+            background: var(--primary);
+            color: var(--on-primary);
+            border: 2px solid var(--ink);
+            border-radius: 16px;
+            box-shadow: 0 5px 0 rgba(3, 14, 26, 0.4);
+            font-weight: 800;
+        }
+
+        .checkout-btn {
+            background: var(--cta-action);
+            border-radius: 14px;
+            font-weight: 800;
+        }
+
+        .checkout-btn:hover { background: #0F7A3F; }
+
+        /* --- Calcomanías --- */
+        .weight-badge {
+            background: var(--cream);
+            color: var(--ink);
+            border: 2px solid var(--ink);
+            border-radius: 14px;
+            box-shadow: 0 4px 0 rgba(3, 14, 26, 0.4);
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        .carta-chip {
+            border: 2px solid rgba(255, 255, 255, 0.14);
+            border-radius: 14px;
+        }
+
+        .carta-chip.active {
+            background: var(--primary);
+            color: var(--on-primary);
+            border-color: var(--ink);
+        }
+
+        .producto-fila-img {
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+        }
+
+        .producto-fila-add {
+            background: var(--action-primary);
+            color: #FFF;
+            border: 2px solid rgba(3, 14, 26, 0.5);
+            border-radius: 14px;
+            box-shadow: 0 4px 0 rgba(3, 14, 26, 0.35);
+        }
+
+        .producto-fila-add:hover {
+            transform: translateY(-1px) scale(1.04);
+            box-shadow: 0 5px 0 rgba(3, 14, 26, 0.35);
+        }
+
+        .cart-floating-btn {
+            background-color: var(--primary);
+            color: var(--on-primary);
+            border: 2px solid var(--ink);
+            box-shadow: 0 5px 0 rgba(3, 14, 26, 0.45);
+        }
+
+        /* Barra compacta: muestra cantidad y total sin tapar media pantalla */
+        .cart-floating-btn.cart-bar {
+            left: 50%;
+            right: auto;
+            bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+            transform: translateX(-50%);
+            width: calc(100% - 28px);
+            max-width: 380px;
+            height: 54px;
+            padding: 0 14px;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 5px 0 rgba(3, 14, 26, 0.45), 0 12px 30px rgba(0, 0, 0, 0.28);
+        }
+
+        .cart-floating-btn.cart-bar[hidden] { display: none; }
+        .cart-floating-btn.cart-bar:hover { transform: translateX(-50%) translateY(-2px); }
+
+        .cart-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .cart-bar-label {
+            font-family: 'Baloo 2', 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+        }
+
+        .cart-bar-total {
+            font-family: 'Baloo 2', 'Inter', sans-serif;
+            font-weight: 800;
+            font-size: 1.05rem;
+            white-space: nowrap;
+        }
+
+        .cart-bar .cart-count {
+            position: static;
+            width: 26px;
+            height: 26px;
+            border: 0;
+            background: var(--ink);
+            color: var(--cream);
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        body.con-carrito { padding-bottom: 86px; }
+
+
+        .status-badge { border-width: 2px; }
+
+        /* --- Superficies de marca --- */
+        nav {
+            background: rgba(10, 10, 10, 0.94);
+            border-bottom: 1px solid rgba(242, 165, 28, 0.28);
+        }
+
+        .carta-chips {
+            background: var(--surface);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        footer {
+            border-top: 2px solid rgba(242, 165, 28, 0.28);
+        }
+
+        .section-title span { color: var(--primary-text); }
+
+        [data-theme="light"] nav {
+            background: rgba(233, 221, 199, 0.92);
+            border-bottom-color: rgba(42, 18, 6, 0.12);
+        }
+
+        [data-theme="light"] .carta-chips { background: var(--surface); }
+        [data-theme="light"] .weight-badge { background: var(--cream); }
+
+        /* El hero conserva la ilustración, pero con un velo celeste suave detrás
+           del texto: la tinta y el tomate necesitan un fondo estable, no la foto. */
+        [data-theme="light"] .hero-veil {
+            background: radial-gradient(ellipse at 50% 46%,
+                rgba(233, 221, 199, 0.94) 0%,
+                rgba(233, 221, 199, 0.88) 45%,
+                rgba(233, 221, 199, 0.60) 70%,
+                rgba(233, 221, 199, 0) 100%);
+        }
+        [data-theme="light"] .hero h1 { color: #2A1206; text-shadow: none; }
+        [data-theme="light"] .hero p { color: #2A1206; text-shadow: none; font-weight: 500; }
+        [data-theme="light"] .hero-status { background: rgba(255, 244, 226, 0.92); color: #2A1206; border-color: rgba(42, 18, 6, 0.22); }
+        /* El cheddar sobre el cielo claro no contrasta: en claro el acento va en tomate */
+        [data-theme="light"] .hero h1 span { color: #9C3416; }
+
+        /* El emoji del tema no hereda color: en claro va sobre tinta para leerse */
+        [data-theme="light"] .theme-toggle { background: #2A1206; }
+        [data-theme="light"] .theme-toggle:hover { background: #4A2A14; }
+
+        /* Papel antiguo: beige cálido con un grano SVG muy leve (6 %).
+           Es un data URI, no pesa ni agrega una petición. */
+        [data-theme="light"] body {
+            background-color: var(--bg);
+            background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.8'%20numOctaves='3'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='linear'%20slope='0.06'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
+            background-size: 180px 180px;
+            background-repeat: repeat;
+        }
+
+        /* Baloo 2 es más ancha que Anton: se ajustan los tamaños donde importa el pliegue */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.05rem; line-height: 1.02; }
+            .hero-status { margin-top: 10px; padding: 5px 12px; font-size: 0.8rem; }
+            .section-title { font-size: 2.1rem; }
+            #menu .section-title { font-size: 1.6rem; }
+            /* El estado ya vive en el hero: el punto del nav solo robaba ancho al nombre */
+            #status-badge { display: none; }
+            .nav-logo { font-size: 17px; }
+        }
+
+        /* Pantallas chicas (320–380): nombre completo sin ellipsis y hero más corto */
+        @media (max-width: 380px) {
+            nav { padding: 12px; }
+            .nav-left { gap: 8px; }
+            .nav-logo { font-size: 15px; }
+            .nav-logo img { width: 30px; height: 30px; }
+            .hero { padding: 78px 14px 24px; }
+            .hero h1 { font-size: 1.85rem; }
+            .weight-badge { margin-bottom: 6px; }
+            .hero p { font-size: 0.86rem; margin-bottom: 10px; }
+            .hero-status { margin-top: 8px; }
+            .cart-floating-btn.cart-bar {
+                height: 50px;
+                width: calc(100% - 20px);
+                padding: 0 12px;
+                bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+            }
+            .cart-bar-label { font-size: 0.92rem; }
+            .cart-bar-total { font-size: 0.98rem; }
+            .cart-bar .cart-count { width: 24px; height: 24px; }
+            body.con-carrito { padding-bottom: 78px; }
+        }
+
+        /* 320–340: el nombre completo no entra; se mantiene la marca y FSA */
+        @media (max-width: 340px) {
+            .nav-logo-word { display: none; }
         }

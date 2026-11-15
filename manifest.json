@@ -5,8 +5,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#F57C00",
+  "background_color": "#55BBFF",
+  "theme_color": "#55BBFF",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -22,13 +22,13 @@
       "purpose": "any"
     },
     {
-      "src": "./assets/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "categories": ["food", "shopping"],
-  "lang": "es",
+  "lang": "es-AR",
   "dir": "ltr"
 }
