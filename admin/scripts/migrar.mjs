@@ -62,7 +62,10 @@ const SQL_LEDGER = `CREATE TABLE IF NOT EXISTS ${LEDGER} (
 // ============================================================
 
 function sha256(texto) {
-  return createHash('sha256').update(texto, 'utf8').digest('hex');
+  // Git entrega CRLF en Windows y LF en Linux. El checksum no puede depender
+  // del sistema operativo o el ledger parecería editado al cambiar de runner.
+  const normalizado = String(texto).replace(/\r\n?/g, '\n');
+  return createHash('sha256').update(normalizado, 'utf8').digest('hex');
 }
 
 export function leerMigraciones(dir = DIR_MIGRACIONES) {
